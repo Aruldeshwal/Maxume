@@ -169,9 +169,9 @@ export default function App() {
           </div>
         </nav>
 
-        {/* Center Main Workspace */}
+        {/* Center Main Workspace with State Persistence */}
         <main className="flex-1 overflow-y-auto p-6 bg-background-deep">
-          {activeTab === "dashboard" && (
+          <div className={activeTab === "dashboard" ? "block" : "hidden"}>
             <Dashboard
               onNavigateToOptimizer={() => setActiveTab("optimizer")}
               totalApplications={totalApps}
@@ -180,13 +180,19 @@ export default function App() {
               ollamaOnline={ollamaStatus.online}
               quotas={quotas}
             />
-          )}
+          </div>
 
-          {activeTab === "sync" && <ProjectSync />}
+          <div className={activeTab === "sync" ? "block" : "hidden"}>
+            <ProjectSync />
+          </div>
 
-          {activeTab === "optimizer" && <Optimizer />}
+          <div className={activeTab === "optimizer" ? "block" : "hidden"}>
+            <Optimizer />
+          </div>
 
-          {activeTab === "history" && <HistoryLogs />}
+          <div className={activeTab === "history" ? "block" : "hidden"}>
+            <HistoryLogs />
+          </div>
         </main>
       </div>
     </div>

@@ -466,17 +466,30 @@ async def optimize_application(payload: OptimizeApplicationRequest):
                 guard_check_passed=1 if s.guard_check_passed else 0
             )
 
-    # Persist networking contacts
+    # Persist networking contacts with generated referral drafts
     saved_contacts = []
     for c in contacts:
+        referral_pitch = await groq_service.generate_referral_pitch(
+            employee_name=c["employee_name"],
+            employee_tagline=c["employee_tagline"],
+            company_name=company_clean,
+            role_title=role_clean,
+            resume_bullets=bullet_highlights,
+            research_brief=research_brief
+        )
         cid = db.add_networking_contact(
             application_id=app_id,
             employee_name=c["employee_name"],
             employee_tagline=c["employee_tagline"],
             profile_url=c["profile_url"],
+            referral_message_draft=referral_pitch,
             referral_status="Not Contacted"
         )
-        saved_contacts.append({**c, "id": cid})
+        saved_contacts.append({
+            **c,
+            "id": cid,
+            "referral_message_draft": referral_pitch
+        })
 
     return {
         "status": "ok",
