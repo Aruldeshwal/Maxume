@@ -72,9 +72,9 @@ CREATE TABLE IF NOT EXISTS company_research_signals (
   [x] Incremental Git watcher implementation on /projects Folder
 
   Phase 2: Core Processing & Docx Engines (Weeks 3-4)
-  [ ] Paragraph-level DOCX style cloning engine
-  [ ] Markdown hyperlink regex extraction & title embedding
-  [ ] Dynamic Local Ollama tags lookup & model swapper
+  [x] Paragraph-level DOCX style cloning engine
+  [x] Markdown hyperlink regex extraction & title embedding
+  [x] Dynamic Local Ollama tags lookup & model swapper
 
   Phase 3: Multimodal & Cloud APIs (Weeks 5-6)
   [ ] Pillow local image compression setup for Screenshot JD input

@@ -13,6 +13,9 @@ Categories per release: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
 - Python FastAPI backend sidecar with PyInstaller target-triple packaging.
 - SQLite SSOT database schema with tables for projects, applications, networking contacts, and company signals.
 - Incremental Git Watcher with commit-hash signature comparison and markdown live demo URL extraction.
+- Paragraph-Level DOCX style cloning engine (`docx_engine.py`) with OXML clickable hyperlink embedding.
+- Single-page resume compile guardrail (enforcing maximum 4 projects and 4 bullets per project).
+- Dynamic local Ollama model discovery (`GET /api/ollama/models`) with hardware VRAM budget guardrails.
 
 ---
 

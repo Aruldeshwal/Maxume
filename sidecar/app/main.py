@@ -2,8 +2,8 @@
 
 import os
 import sys
-from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from typing import Optional, List, Dict, Any, Union
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -17,6 +17,9 @@ if sidecar_dir not in sys.path:
 load_dotenv(os.path.join(sidecar_dir, ".env"))
 
 from app.database import db
+from app.git_watcher import GitWatcher
+from app.docx_engine import DocxEngine
+from app.ollama_manager import ollama_manager
 
 app = FastAPI(
     title="Maxume Python Sidecar",
@@ -33,6 +36,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Pydantic Request Schemas ---
+
 class ProjectUpsertRequest(BaseModel):
     directory_path: str
     directory_name: str
@@ -48,6 +53,15 @@ class ApplicationCreateRequest(BaseModel):
     output_folder_path: Optional[str] = None
     personalization_status: Optional[str] = "Not Attempted"
 
+class DocxRebuildRequest(BaseModel):
+    template_path: str
+    output_path: str
+    projects: List[Dict[str, Any]]
+    skills: Union[List[str], Dict[str, List[str]]]
+    hyperlink_color: Optional[str] = "990000"
+
+# --- Endpoints ---
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint for Tauri sidecar readiness."""
@@ -58,6 +72,7 @@ async def health_check():
         "database": os.path.exists(db.db_path)
     }
 
+# Projects & SSOT
 @app.get("/api/projects")
 async def get_projects():
     """Returns list of tracked projects in SSOT database."""
@@ -75,8 +90,6 @@ async def upsert_project(payload: ProjectUpsertRequest):
     )
     return {"status": "ok", "project_id": project_id}
 
-from app.git_watcher import GitWatcher
-
 @app.post("/api/projects/sync")
 async def sync_projects(projects_dir: Optional[str] = None):
     """Triggers Incremental Git Watcher sync across projects folder."""
@@ -85,6 +98,7 @@ async def sync_projects(projects_dir: Optional[str] = None):
     results = watcher.scan_project_folder(target_dir)
     return {"status": "ok", "scanned_directory": target_dir, "results": results}
 
+# Applications History Logs
 @app.get("/api/applications")
 async def get_applications():
     """Returns all application logs."""
@@ -118,6 +132,36 @@ async def get_application(app_id: int):
         "networking_contacts": contacts,
         "company_research_signals": signals
     }
+
+# Docx Engine Rebuilding
+@app.post("/api/docx/rebuild")
+async def rebuild_docx(payload: DocxRebuildRequest):
+    """Rebuilds resume DOCX with paragraph cloning, link embedding, and single-page guardrails."""
+    try:
+        out_path = DocxEngine.rebuild_resume(
+            template_path=payload.template_path,
+            output_path=payload.output_path,
+            projects=payload.projects,
+            skills=payload.skills,
+            hyperlink_color=payload.hyperlink_color or "990000"
+        )
+        return {"status": "ok", "output_path": out_path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"DOCX rebuilding failed: {str(e)}")
+
+# Ollama Discovery & VRAM Guardrails
+@app.get("/api/ollama/status")
+async def get_ollama_status():
+    """Returns reachability status for local Ollama server."""
+    return ollama_manager.get_status()
+
+@app.get("/api/ollama/models")
+async def list_ollama_models(
+    num_ctx: int = Query(2048, description="Context window size"),
+    budget_gb: float = Query(5.2, description="VRAM budget in GB")
+):
+    """Lists local models with dynamic VRAM guardrail calculations."""
+    return ollama_manager.list_models(num_ctx=num_ctx, budget_gb=budget_gb)
 
 if __name__ == "__main__":
     import uvicorn
