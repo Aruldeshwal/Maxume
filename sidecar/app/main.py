@@ -73,11 +73,12 @@ class CompanyResearchRequest(BaseModel):
     max_signals: Optional[int] = 5
 
 class OptimizeApplicationRequest(BaseModel):
-    company_name: str
-    role_title: str
+    company_name: Optional[str] = ""
+    role_title: Optional[str] = ""
     company_url: Optional[str] = None
     jd_raw_text: Optional[str] = None
     screenshot_path: Optional[str] = None
+    screenshot_base64: Optional[str] = None
     master_resume_path: Optional[str] = None
     output_dir: Optional[str] = None
     personalization_enabled: Optional[bool] = True
@@ -268,13 +269,36 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     6. Networking employee discovery
     7. Persistence to local SQLite DB and /output folder
     """
-    company_clean = payload.company_name.strip()
-    role_clean = payload.role_title.strip()
+    company_clean = (payload.company_name or "").strip()
+    role_clean = (payload.role_title or "").strip()
     
-    # 1. JD text extraction
+    # 1. JD text extraction & Screenshot OCR
     jd_text = payload.jd_raw_text or ""
     compressed_img = None
-    if payload.screenshot_path and os.path.exists(payload.screenshot_path):
+    
+    # If base64 screenshot was uploaded directly from UI
+    if payload.screenshot_base64:
+        try:
+            raw_b64 = payload.screenshot_base64
+            if "," in raw_b64:
+                raw_b64 = raw_b64.split(",")[1]
+            import base64
+            import tempfile
+            img_bytes = base64.b64decode(raw_b64)
+            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tf:
+                tf.write(img_bytes)
+                temp_path = tf.name
+            
+            compressed_img, _, _ = compress_jd_screenshot(temp_path)
+            ocr_res = await gemini_service.ocr_screenshot_jd(temp_path)
+            jd_text = ocr_res.get("raw_text") or jd_text
+            if not company_clean and ocr_res.get("company_name"):
+                company_clean = ocr_res["company_name"]
+            if not role_clean and ocr_res.get("role_title"):
+                role_clean = ocr_res["role_title"]
+        except Exception:
+            pass
+    elif payload.screenshot_path and os.path.exists(payload.screenshot_path):
         try:
             compressed_img, _, _ = compress_jd_screenshot(payload.screenshot_path)
             ocr_res = await gemini_service.ocr_screenshot_jd(payload.screenshot_path)
@@ -285,6 +309,9 @@ async def optimize_application(payload: OptimizeApplicationRequest):
                 role_clean = ocr_res["role_title"]
         except Exception:
             pass
+
+    company_clean = company_clean or "Target Company"
+    role_clean = role_clean or "Software Engineer"
 
     # 2. Company Research Signals (Stage 4)
     research_brief = None

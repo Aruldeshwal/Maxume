@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   Sparkles, 
   Upload, 
@@ -7,20 +7,32 @@ import {
   Copy, 
   Sliders, 
   AlertTriangle,
-  UserCheck
+  UserCheck,
+  X
 } from "lucide-react";
 import TerminalLog, { LogLine } from "../components/TerminalLog";
 import SignalCard from "../components/SignalCard";
 import ContactCard, { ContactData } from "../components/ContactCard";
 
+interface UploadedImage {
+  file: File;
+  name: string;
+  sizeKb: number;
+  base64: string;
+  previewUrl: string;
+}
+
 export const Optimizer: React.FC = () => {
-  // Input states
-  const [companyName, setCompanyName] = useState<string>("Amazon");
-  const [roleTitle, setRoleTitle] = useState<string>("Senior Software Engineer");
-  const [companyUrl, setCompanyUrl] = useState<string>("https://amazon.jobs");
-  const [jdText, setJdText] = useState<string>(
-    "We are seeking a Senior Software Engineer to build high-scale distributed backend systems. Requirements: Strong experience in Go, Python, distributed consensus, Kafka, and low-latency database architectures."
-  );
+  // Input states (empty initial values)
+  const [companyName, setCompanyName] = useState<string>("");
+  const [roleTitle, setRoleTitle] = useState<string>("");
+  const [companyUrl, setCompanyUrl] = useState<string>("");
+  const [jdText, setJdText] = useState<string>("");
+
+  // Screenshot Upload State
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Settings & Guardrails
   const [personalizationEnabled, setPersonalizationEnabled] = useState<boolean>(true);
@@ -50,6 +62,56 @@ export const Optimizer: React.FC = () => {
       .catch(() => {});
   }, [selectedModel]);
 
+  const processFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload a valid image file (.png, .jpg, .jpeg, .webp)");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setUploadedImage({
+        file,
+        name: file.name,
+        sizeKb: Math.round(file.size / 1024),
+        base64,
+        previewUrl: URL.createObjectURL(file),
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      processFile(e.target.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      processFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const removeUploadedImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUploadedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const addLog = (stage: string, message: string, level: "info" | "success" | "warning" | "error" = "info") => {
     const now = new Date();
     const timeStr = now.toTimeString().split(" ")[0];
@@ -66,16 +128,27 @@ export const Optimizer: React.FC = () => {
   };
 
   const handleRunOptimizer = async () => {
+    if (!jdText.trim() && !uploadedImage) {
+      alert("Please paste a job description or upload a JD screenshot first.");
+      return;
+    }
+
     setIsOptimizing(true);
     setLogs([]);
     setActiveResult(null);
 
+    const targetCompany = companyName.trim() || "Target Company";
+    const targetRole = roleTitle.trim() || "Software Engineer";
+
     // Initial log steps
-    addLog("Sidecar", "Initiating optimization pipeline for " + companyName + " (" + roleTitle + ")...");
+    if (uploadedImage) {
+      addLog("OCR", `Compressing screenshot (${uploadedImage.sizeKb} KB) & running Multimodal Gemini OCR...`);
+    }
+    addLog("Sidecar", `Initiating optimization pipeline for ${targetCompany} (${targetRole})...`);
     addLog("Local DB", "Performing Semantic Project Similarity Retrieval over /projects SSOT...");
     
-    if (personalizationEnabled) {
-      addLog("Research", "Searching for recent company signals in 90-day window via Google CSE...");
+    if (personalizationEnabled && companyName.trim()) {
+      addLog("Research", `Searching for recent company signals for ${targetCompany} in 90-day window...`);
     }
 
     try {
@@ -83,10 +156,11 @@ export const Optimizer: React.FC = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          company_name: companyName,
-          role_title: roleTitle,
-          company_url: companyUrl,
-          jd_raw_text: jdText,
+          company_name: targetCompany,
+          role_title: targetRole,
+          company_url: companyUrl.trim() || undefined,
+          jd_raw_text: jdText.trim() || undefined,
+          screenshot_base64: uploadedImage ? uploadedImage.base64 : undefined,
           personalization_enabled: personalizationEnabled,
         }),
       });
@@ -102,14 +176,15 @@ export const Optimizer: React.FC = () => {
           }
         }
 
-        addLog("Ollama", "Swapping Resume Section {{PROJECTS}} & {{SKILLS}} via Paragraph-Level Rebuilder...", "info");
+        addLog("Ollama", "Swapping Resume Section {{PROJECTS}} & {{SKILLS}} with clickable live hyperlinks...", "info");
         addLog("Groq", "Compiling grounded Cover Letter, Referral Pitch & Email via Llama 3.3 70B...", "info");
         addLog("Google CSE", `Discovered ${data.networking_contacts?.length || 0} employee profiles for networking`, "info");
         addLog("Completed", `Pack successfully compiled to ${data.output_folder || "/output"}`, "success");
 
         setActiveResult(data);
       } else {
-        addLog("Error", "Sidecar pipeline error. Check sidecar terminal logs.", "error");
+        const errData = await res.json().catch(() => ({}));
+        addLog("Error", `Optimization error: ${errData.detail || "Sidecar pipeline error."}`, "error");
       }
     } catch (err: any) {
       addLog("Error", `Pipeline exception: ${err.message}`, "error");
@@ -126,6 +201,15 @@ export const Optimizer: React.FC = () => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto pb-12">
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        className="hidden"
+      />
+
       {/* Left 8 Columns: Input & Configuration & Execution */}
       <div className="lg:col-span-8 space-y-6">
         {/* Top Header */}
@@ -148,7 +232,7 @@ export const Optimizer: React.FC = () => {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
-              placeholder="e.g. Amazon"
+              placeholder="e.g. Stripe, Google, Acme"
             />
           </div>
 
@@ -170,7 +254,7 @@ export const Optimizer: React.FC = () => {
               value={companyUrl}
               onChange={(e) => setCompanyUrl(e.target.value)}
               className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
-              placeholder="https://company.com/careers"
+              placeholder="e.g. https://company.com/careers"
             />
           </div>
         </div>
@@ -187,7 +271,7 @@ export const Optimizer: React.FC = () => {
               value={jdText}
               onChange={(e) => setJdText(e.target.value)}
               className="w-full bg-background-card border border-border-subtle rounded-lg p-3 text-xs text-text-primary font-mono focus:outline-none focus:border-legion-crimson leading-relaxed"
-              placeholder="Paste raw job description text here..."
+              placeholder="Paste raw job description text here, or drop a screenshot on the right..."
             />
           </div>
 
@@ -196,15 +280,59 @@ export const Optimizer: React.FC = () => {
               <Upload className="w-3.5 h-3.5 text-sky-400" />
               <span>Or Upload / Drop Screenshot JD</span>
             </label>
-            <div className="h-[148px] rounded-lg border-2 border-dashed border-border-subtle bg-background-card hover:border-legion-crimson/60 transition-colors flex flex-col items-center justify-center p-4 text-center cursor-pointer group">
-              <Upload className="w-6 h-6 text-text-muted group-hover:text-legion-crimson transition-colors" />
-              <span className="mt-2 text-xs font-medium text-text-secondary">
-                Drag &amp; drop JD screenshot
-              </span>
-              <span className="text-[10px] text-text-muted mt-0.5">
-                Auto-compressed to &lt;300KB via Pillow (ADR 1)
-              </span>
-            </div>
+
+            {uploadedImage ? (
+              <div className="h-[148px] rounded-lg border border-emerald-800/80 bg-emerald-950/20 p-3 flex flex-col justify-between relative group">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <img
+                      src={uploadedImage.previewUrl}
+                      alt="JD Preview"
+                      className="w-12 h-12 object-cover rounded border border-emerald-700/60"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-white truncate max-w-[150px]">
+                        {uploadedImage.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-emerald-400">
+                        {uploadedImage.sizeKb} KB • Screenshot Ready
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={removeUploadedImage}
+                    className="p-1 rounded-full bg-zinc-800 hover:bg-rose-900 text-text-muted hover:text-white transition-colors"
+                    title="Remove Screenshot"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="text-[10px] font-mono text-text-secondary flex items-center space-x-1">
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span>Multimodal OCR will extract JD requirements automatically.</span>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`h-[148px] rounded-lg border-2 border-dashed transition-all flex flex-col items-center justify-center p-4 text-center cursor-pointer group ${
+                  isDragging
+                    ? "border-legion-crimson bg-legion-crimson/10 scale-[1.01]"
+                    : "border-border-subtle bg-background-card hover:border-legion-crimson/60"
+                }`}
+              >
+                <Upload className="w-6 h-6 text-text-muted group-hover:text-legion-crimson transition-colors" />
+                <span className="mt-2 text-xs font-medium text-text-primary">
+                  Click to upload or drag &amp; drop JD screenshot
+                </span>
+                <span className="text-[10px] text-text-muted mt-0.5 font-mono">
+                  PNG, JPG, WEBP • Auto-compressed via Pillow (ADR 1)
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -356,7 +484,7 @@ export const Optimizer: React.FC = () => {
         <SignalCard
           status={activeResult?.research_brief?.status || "Not Attempted"}
           signals={activeResult?.research_brief?.signals || []}
-          companyName={companyName}
+          companyName={companyName || "Target Company"}
         />
 
         {/* Networking Contacts Drawer */}
