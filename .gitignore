@@ -1,0 +1,44 @@
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Rust / Tauri
+src-tauri/target/
+
+# Python / Sidecar
+sidecar/venv/
+sidecar/.venv/
+venv/
+.venv/
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+sidecar/build/
+sidecar/dist/
+*.spec
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment and Secrets (Security Spec §2)
+.env
+.env.*
+!.env.example
+sidecar/.env
+sidecar/.env.*
+!sidecar/.env.example
+
+# Local SQLite Database & Outputs
+maxume_local.db
+*.db
+*.sqlite
+*.sqlite3
+output/
+/output
+
+# OS generated
+.DS_Store
+Thumbs.db
