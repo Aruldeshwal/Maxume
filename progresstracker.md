@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS company_research_signals (
 ```
   Phase 1: Local Backbone (Weeks 1-2)
   [x] Scaffolding Tauri v2 App & Sidecar packaging
-  [ ] SQLite DB schema migration & python driver integration
-  [ ] Incremental Git watcher implementation on /projects Folder
+  [x] SQLite DB schema migration & python driver integration
+  [x] Incremental Git watcher implementation on /projects Folder
 
   Phase 2: Core Processing & Docx Engines (Weeks 3-4)
   [ ] Paragraph-level DOCX style cloning engine

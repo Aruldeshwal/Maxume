@@ -9,7 +9,10 @@ Categories per release: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
 ## [Unreleased]
 
 ### Added
-- Nothing yet — this file is maintained in-commit starting from Phase 1 of `progresstracker.md`.
+- Tauri v2 + React TypeScript frontend with Legion Red & Black dark mode theme.
+- Python FastAPI backend sidecar with PyInstaller target-triple packaging.
+- SQLite SSOT database schema with tables for projects, applications, networking contacts, and company signals.
+- Incremental Git Watcher with commit-hash signature comparison and markdown live demo URL extraction.
 
 ---
 
