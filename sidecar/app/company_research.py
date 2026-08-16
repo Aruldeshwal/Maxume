@@ -89,7 +89,12 @@ def classify_source_tier(url: str, company_domain: Optional[str] = None) -> int:
         return 1
     if any(p in domain for p in TIER_3_PATTERNS):
         return 3
-    if any(p in domain for p in ["techcrunch.com", "bloomberg.com", "reuters.com", "venturebeat.com", "wired.com", "theverge.com", "forbes.com"]):
+    if any(p in domain for p in [
+        "techcrunch.com", "bloomberg.com", "reuters.com", "venturebeat.com",
+        "wired.com", "theverge.com", "forbes.com",
+        "inc42.com", "yourstory.com", "entrackr.com", "economictimes.indiatimes.com",
+        "livemint.com", "vccircle.com", "business-standard.com"
+    ]):
         return 2
     
     # Generic news / press
