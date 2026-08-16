@@ -36,11 +36,9 @@ class TokenAwareScheduler:
     def __init__(self, time_func: Callable[[], float] = time.monotonic):
         self.time_func = time_func
         # Multi-provider limiters (codestandards.md §2)
-        # Note: google_cse is shared between employee lookup and company research signals
         self.limiters: Dict[str, APIRateLimiter] = {
             "gemini": APIRateLimiter(requests_per_minute=15, max_tokens=15, time_func=time_func),
             "groq": APIRateLimiter(requests_per_minute=30, max_tokens=30, time_func=time_func),
-            "google_cse": APIRateLimiter(requests_per_minute=10, max_tokens=10, time_func=time_func),
         }
 
     async def execute_task(

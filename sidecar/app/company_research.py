@@ -140,8 +140,6 @@ def research_company(
     company_url: Optional[str] = None,
     recency_days: int = DEFAULT_RECENCY_DAYS,
     max_signals: int = DEFAULT_MAX_SIGNALS,
-    google_cse_key: Optional[str] = None,
-    google_cse_cx: Optional[str] = None,
     gemini_api_key: Optional[str] = None,
     mock_snippets: Optional[List[Dict[str, Any]]] = None,
     mock_gemini_response: Optional[str] = None
@@ -165,60 +163,27 @@ def research_company(
             if is_within_recency(item.get("published_at"), recency_days):
                 raw_candidates.append(item)
     else:
-        # 1. Try Google CSE if configured
-        cse_key = google_cse_key or os.environ.get("GOOGLE_CSE_KEY")
-        cse_cx = google_cse_cx or os.environ.get("GOOGLE_CSE_CX")
-        
-        if cse_key and cse_cx:
-            try:
-                query = f'"{clean_company}" (news OR "product launch" OR funding OR "raises")'
-                url = "https://customsearch.googleapis.com/customsearch/v1"
-                params = {
-                    "key": cse_key,
-                    "cx": cse_cx,
-                    "q": query,
-                    "num": min(5, max_signals)
-                }
-                res = requests.get(url, params=params, timeout=6.0)
-                if res.status_code == 200:
-                    data = res.json()
-                    items = data.get("items", [])
-                    for it in items:
-                        snippet = it.get("snippet", "")
-                        link = it.get("link", "")
-                        title = it.get("title", "")
+        # 1. Real-Time Google News RSS Search (Zero-Config, Real-Time Dated Articles)
+        try:
+            rss_q = urllib.parse.quote(f"{clean_company} launch OR funding OR news OR AI")
+            rss_url = f"https://news.google.com/rss/search?q={rss_q}&hl=en-US&gl=US&ceid=US:en"
+            rss_res = requests.get(rss_url, headers={"User-Agent": USER_AGENT}, timeout=6.0)
+            if rss_res.status_code == 200:
+                root = ET.fromstring(rss_res.content)
+                for item in root.findall(".//item")[:max_signals * 2]:
+                    t = item.find("title").text if item.find("title") is not None else ""
+                    l = item.find("link").text if item.find("link") is not None else ""
+                    d = item.find("pubDate").text if item.find("pubDate") is not None else None
+                    if t and l:
                         raw_candidates.append({
-                            "title": title,
-                            "snippet": f"{title}. {snippet}",
-                            "source_url": link,
-                            "published_at": None,
-                            "source_tier": classify_source_tier(link, company_domain)
+                            "title": t,
+                            "snippet": t,
+                            "source_url": l,
+                            "published_at": d,
+                            "source_tier": classify_source_tier(l, company_domain)
                         })
-            except Exception:
-                pass
-
-        # 2. Resilient Fallback: Google News RSS Search (Zero-Config, Real-Time Dated Articles)
-        if len(raw_candidates) == 0:
-            try:
-                rss_q = urllib.parse.quote(f"{clean_company} launch OR funding OR news OR AI")
-                rss_url = f"https://news.google.com/rss/search?q={rss_q}&hl=en-US&gl=US&ceid=US:en"
-                rss_res = requests.get(rss_url, headers={"User-Agent": USER_AGENT}, timeout=6.0)
-                if rss_res.status_code == 200:
-                    root = ET.fromstring(rss_res.content)
-                    for item in root.findall(".//item")[:max_signals * 2]:
-                        t = item.find("title").text if item.find("title") is not None else ""
-                        l = item.find("link").text if item.find("link") is not None else ""
-                        d = item.find("pubDate").text if item.find("pubDate") is not None else None
-                        if t and l:
-                            raw_candidates.append({
-                                "title": t,
-                                "snippet": t,
-                                "source_url": l,
-                                "published_at": d,
-                                "source_tier": classify_source_tier(l, company_domain)
-                            })
-            except Exception:
-                pass
+        except Exception:
+            pass
 
         # 3. Supplement with direct company domain fetch if known
         if company_url:

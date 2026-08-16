@@ -11,7 +11,6 @@ interface DashboardProps {
   quotas: {
     gemini: { used: number; total: number };
     groq: { used: number; total: number };
-    google_cse: { used: number; total: number };
   };
 }
 
@@ -38,22 +37,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
             Maxume Job Application Assistant
           </h1>
           <p className="text-xs text-text-secondary max-w-xl leading-relaxed">
-            Local-first AI engine pairing Ollama local inference with zero-cost cloud APIs. 
-            Automates project indexing, DOCX paragraph rebuilding, and grounded personalization.
+            Local-first AI application engine: Real-time Git watcher, paragraph-level Word resume compilation with active hyperlinks, and company signal research.
           </p>
         </div>
 
         <button
           onClick={onNavigateToOptimizer}
-          className="px-5 py-3 rounded-lg bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs tracking-wider uppercase shadow-[0_0_20px_rgba(225,29,72,0.5)] transition-all flex items-center space-x-2 flex-shrink-0 group"
+          className="flex items-center space-x-2 bg-legion-crimson hover:bg-rose-700 text-white font-mono text-xs font-semibold px-5 py-3 rounded-lg shadow-lg hover:shadow-[0_0_20px_rgba(225,29,72,0.4)] transition-all flex-shrink-0"
         >
-          <Sparkles className="w-4 h-4 text-white group-hover:rotate-12 transition-transform" />
-          <span>Start New Job Optimization</span>
+          <Sparkles className="w-4 h-4" />
+          <span>New Application Run</span>
           <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
-      {/* Hardware & System Status Grid */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Local LLM Card */}
         <div className="p-4 rounded-lg bg-background-card border border-border-subtle hover:border-border-strong transition-all space-y-2">
@@ -111,7 +109,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center justify-between border-b border-border-subtle pb-3">
           <div className="space-y-0.5">
             <h2 className="text-sm font-bold font-mono text-white uppercase tracking-wider">
-              Free Tier Quota Telemetry ($0.00 / Month)
+              Zero-Cost Cloud API Quotas ($0.00 / Month)
             </h2>
             <p className="text-[11px] text-text-secondary">
               Zero-cost developer endpoints monitored with Token-Bucket rate limiting.
@@ -123,24 +121,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <QuotaRing
-            label="Gemini 2.5 Flash-Lite"
+            label="Gemini Multimodal OCR"
             current={quotas.gemini.used}
             total={quotas.gemini.total}
             unit="req/day"
           />
           <QuotaRing
-            label="Groq Llama 3.3 70B"
+            label="Groq Llama 3.3 70B Creative Engine"
             current={quotas.groq.used}
             total={quotas.groq.total}
             unit="req/day"
-          />
-          <QuotaRing
-            label="Google Custom Search"
-            current={quotas.google_cse.used}
-            total={quotas.google_cse.total}
-            unit="queries/day"
           />
         </div>
       </div>

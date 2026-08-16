@@ -19,7 +19,6 @@ export default function App() {
   const [quotas] = useState({
     gemini: { used: 0, total: 1000 },
     groq: { used: 0, total: 14400 },
-    google_cse: { used: 0, total: 100 },
   });
 
   useEffect(() => {
@@ -154,7 +153,7 @@ export default function App() {
                 <span className="text-emerald-400 font-bold">$0.00/mo</span>
               </div>
               <div className="text-[10px] text-text-secondary flex justify-between">
-                <span>Gemini:</span>
+                <span>Gemini OCR:</span>
                 <span>1000/1000</span>
               </div>
               <div className="text-[10px] text-text-secondary flex justify-between">
@@ -162,8 +161,8 @@ export default function App() {
                 <span>14.4k/14.4k</span>
               </div>
               <div className="text-[10px] text-text-secondary flex justify-between">
-                <span>Google CSE:</span>
-                <span>100/100</span>
+                <span>News & Signals:</span>
+                <span className="text-emerald-400 font-bold">Unlimited</span>
               </div>
             </div>
           </div>
