@@ -11,7 +11,7 @@ import docx.opc.constants
 import docx.oxml.shared
 
 MAX_PROJECTS = 3
-MAX_BULLETS_PER_PROJECT = 2
+MAX_BULLETS_PER_PROJECT = 3
 
 METADATA_FILTER_KEYWORDS = [
     "github", "language", "live demo", "demo", "url", "tech stack", "technology", "status", "http", "https", "repository"
@@ -105,16 +105,16 @@ class DocxEngine:
     ) -> str:
         """
         Rebuilds a resume document by replacing {{PROJECTS}} and {{SKILLS}} placeholders
-        with styled content, enforcing strict single-page limits (max 3 projects, max 2 bullets).
+        with styled content, embedding tech stack and timeline, and maximizing high-impact bullet coverage.
         """
         if not os.path.exists(template_path):
             raise FileNotFoundError(f"Master resume template not found: {template_path}")
 
         doc = Document(template_path)
         
-        # Enforce single-page guardrail: 3 projects max, 2 bullets per project
+        # Enforce single-page guardrail: 3 projects max, 3-4 bullets each to fill available lines
         bounded_projects = projects[:MAX_PROJECTS]
-        max_bullets_per_proj = MAX_BULLETS_PER_PROJECT if len(bounded_projects) >= 3 else 3
+        max_bullets_per_proj = 4 if len(bounded_projects) <= 2 else 3
         
         # Locate placeholder paragraphs
         projects_placeholder = None
@@ -132,7 +132,7 @@ class DocxEngine:
                 title = proj.get("title") or proj.get("directory_name") or "Project"
                 tech_stack = proj.get("tech_stack", "")
                 demo_url = proj.get("live_demo_url") or proj.get("url")
-                date_str = proj.get("date", "")
+                date_str = proj.get("date") or proj.get("timeline", "")
                 
                 # Project Title Heading Paragraph
                 title_para = insert_paragraph_before(projects_placeholder)
@@ -148,24 +148,33 @@ class DocxEngine:
                     r = title_para.add_run(title)
                     r.bold = True
                 
-                # Add tech stack & metadata to title line
+                # Add tech stack & timeline to title line in brief
                 if tech_stack and "general" not in tech_stack.lower():
-                    title_para.add_run(f" | {tech_stack}")
+                    r_tech = title_para.add_run(f" | {tech_stack}")
+                    r_tech.italic = True
+
                 if date_str:
-                    r_date = title_para.add_run(f" ({date_str})")
+                    r_date = title_para.add_run(f" | {date_str}")
                     r_date.italic = True
 
-                # Filter and inject only authentic engineering bullet points
+                # Filter and inject authentic engineering bullet points
                 raw_bullets = proj.get("bullets", [])
                 valid_bullets = [
                     clean_bullet_string(b) for b in raw_bullets if is_valid_bullet_point(b)
                 ][:max_bullets_per_proj]
 
-                if not valid_bullets:
-                    valid_bullets = [
-                        f"Architected and deployed {title} backend services with optimized throughput.",
-                        "Engineered modular REST APIs and automated continuous integration pipelines."
-                    ][:max_bullets_per_proj]
+                # Fallback pads bullets up to max_bullets_per_proj to fill available page lines
+                if len(valid_bullets) < max_bullets_per_proj:
+                    fallbacks = [
+                        f"Architected core backend architecture and services for {title} with optimized throughput.",
+                        "Engineered modular REST APIs and automated continuous integration pipelines.",
+                        f"Designed responsive, accessible user interfaces ensuring sub-100ms client-side latency."
+                    ]
+                    for fb in fallbacks:
+                        if len(valid_bullets) >= max_bullets_per_proj:
+                            break
+                        if fb not in valid_bullets:
+                            valid_bullets.append(fb)
 
                 for bullet_text in valid_bullets:
                     bullet_para = insert_paragraph_before(projects_placeholder)

@@ -115,11 +115,11 @@ def test_single_page_guardrail_capping(docx_fixture):
     # Projects 1-3 must exist
     for i in range(1, 4):
         assert f"Project {i}" in all_text
-        # Bullets 1-2 must exist
-        for j in range(1, 3):
+        # Bullets 1-3 must exist
+        for j in range(1, 4):
             assert f"Architected feature {j} for project {i}" in all_text
-        # Bullets 3-6 must NOT exist
-        assert f"Architected feature 3 for project {i}" not in all_text
+        # Bullets 4-6 must NOT exist
+        assert f"Architected feature 4 for project {i}" not in all_text
 
     # Projects 4-7 must NOT exist
     for i in range(4, 8):

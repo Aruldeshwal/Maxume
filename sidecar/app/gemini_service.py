@@ -151,29 +151,43 @@ class GeminiService:
                 if not stripped or stripped.startswith("#"):
                     continue
                 lower = stripped.lower()
-                if any(lower.startswith(prefix) for prefix in ["github:", "**github", "language:", "**language", "live demo:", "**live demo", "url:", "tech"]):
+                if any(lower.startswith(prefix) for prefix in ["github:", "**github", "language:", "**language", "live demo:", "**live demo", "url:", "tech stack:", "**tech stack", "timeline:", "**timeline"]):
                     continue
                 clean = re.sub(r'^[-*•\d.)\s]+', '', stripped).replace("**", "").replace("__", "").strip()
                 if len(clean) > 20 and not clean.startswith("http"):
                     valid.append(clean)
             return valid
 
+        def extract_metadata_from_summary(summary_txt: str) -> Tuple[str, str]:
+            tech = ""
+            timeline = ""
+            for line in (summary_txt or "").splitlines():
+                lower = line.lower()
+                if "**tech stack**:" in lower or "tech stack:" in lower:
+                    tech = re.sub(r'[*_]+tech stack[*_]+:\s*', '', line, flags=re.IGNORECASE).strip()
+                elif "**timeline**:" in lower or "timeline:" in lower or "**date**:" in lower:
+                    timeline = re.sub(r'[*_]+(?:timeline|date)[*_]+:\s*', '', line, flags=re.IGNORECASE).strip()
+            return tech, timeline
+
         def get_local_fallback() -> List[Dict[str, Any]]:
             fallback_list = []
             for i, p in enumerate(prefiltered[:top_k]):
                 summary_txt = p.get("summary_markdown", "")
                 extracted_bullets = extract_clean_bullets_from_text(summary_txt)
+                meta_tech, meta_timeline = extract_metadata_from_summary(summary_txt)
                 if not extracted_bullets:
                     extracted_bullets = [
                         f"Architected core backend architecture and services for {p.get('directory_name', 'project')}.",
-                        "Engineered modular data pipelines optimizing response latency."
+                        "Engineered modular data pipelines optimizing response latency.",
+                        "Designed responsive UI components achieving fast user iteration cycles."
                     ]
 
                 fallback_list.append({
                     "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
-                    "tech_stack": p.get("tech_stack", "General Engineering"),
+                    "tech_stack": p.get("tech_stack") or meta_tech or "General Engineering",
                     "live_demo_url": p.get("live_demo_url"),
-                    "bullets": extracted_bullets[:2]
+                    "date": p.get("date") or meta_timeline or "2024 – Present",
+                    "bullets": extracted_bullets[:3]
                 })
             return fallback_list
 
@@ -181,10 +195,13 @@ class GeminiService:
             projects_summary_str = ""
             for i, p in enumerate(prefiltered):
                 clean_bullets = extract_clean_bullets_from_text(p.get('summary_markdown', ''))
+                meta_tech, meta_timeline = extract_metadata_from_summary(p.get('summary_markdown', ''))
                 bullets_joined = "\n".join(f"- {b}" for b in clean_bullets[:3])
                 projects_summary_str += (
                     f"Project {i+1}:\n"
                     f"Name: {p.get('directory_name') or p.get('title')}\n"
+                    f"Tech Stack: {p.get('tech_stack') or meta_tech or 'N/A'}\n"
+                    f"Timeline: {p.get('date') or meta_timeline or '2024 – Present'}\n"
                     f"URL: {p.get('live_demo_url', '')}\n"
                     f"Highlights:\n{bullets_joined}\n\n"
                 )
@@ -192,9 +209,9 @@ class GeminiService:
             prompt = (
                 "You are an expert technical recruiter and resume strategist. "
                 "Analyze the candidate's projects and select the top 2-3 most relevant projects for the given Job Description. "
-                "For each selected project, provide: 'title', 'tech_stack', 'live_demo_url', and 2 concise, standout engineering 'bullets'. "
+                "For each selected project, provide: 'title', 'tech_stack', 'live_demo_url', 'date', and 3 concise, standout engineering 'bullets'. "
                 "Do NOT include URLs, GitHub links, or labels in the bullet points. "
-                "Output ONLY a valid JSON array of objects with keys: 'title', 'tech_stack', 'live_demo_url', 'bullets'.\n\n"
+                "Output ONLY a valid JSON array of objects with keys: 'title', 'tech_stack', 'live_demo_url', 'date', 'bullets'.\n\n"
                 f"JOB DESCRIPTION:\n{jd_text[:1500]}\n\n"
                 f"CANDIDATE PROJECTS:\n{projects_summary_str}"
             )
@@ -216,13 +233,19 @@ class GeminiService:
                         clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
                         try:
                             ranked = json.loads(clean_json_str)
-                            # Clean each bullet to guarantee no labels
-                            for r in ranked:
+                            # Clean each bullet and attach fallback tech/date if missing
+                            for idx, r in enumerate(ranked):
+                                orig_proj = prefiltered[idx] if idx < len(prefiltered) else {}
+                                orig_meta_tech, orig_meta_time = extract_metadata_from_summary(orig_proj.get("summary_markdown", ""))
+                                if not r.get("tech_stack"):
+                                    r["tech_stack"] = orig_proj.get("tech_stack") or orig_meta_tech or "General Engineering"
+                                if not r.get("date"):
+                                    r["date"] = orig_proj.get("date") or orig_meta_time or "2024 – Present"
                                 r["bullets"] = [
                                     re.sub(r'^[-*•\d.)\s]+', '', b).replace("**", "").strip()
                                     for b in r.get("bullets", [])
-                                    if len(b.strip()) > 15 and not any(b.lower().startswith(x) for x in ["github:", "language:", "live demo:", "url:"])
-                                ][:2]
+                                    if len(b.strip()) > 15 and not any(b.lower().startswith(x) for x in ["github:", "language:", "live demo:", "url:", "tech stack:"])
+                                ][:3]
                             return ranked[:top_k]
                         except Exception:
                             return get_local_fallback()

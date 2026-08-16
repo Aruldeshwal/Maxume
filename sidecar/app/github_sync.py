@@ -275,8 +275,40 @@ def sync_github_profile_repositories(
             except Exception:
                 continue
 
+        # Extract timeline / date
+        created_at = repo.get("created_at", "")
+        timeline = "2024 – Present"
+        if created_at and pushed_at:
+            try:
+                c_dt = datetime.strptime(created_at.split("T")[0], "%Y-%m-%d")
+                p_dt = datetime.strptime(pushed_at.split("T")[0], "%Y-%m-%d")
+                c_fmt = c_dt.strftime("%b %Y")
+                p_fmt = p_dt.strftime("%b %Y")
+                timeline = c_fmt if c_fmt == p_fmt else f"{c_fmt} – {p_fmt}"
+            except Exception:
+                pass
+
         # Extract live demo URL
         live_demo_url = extract_github_live_demo(homepage, readme_text) or (homepage if homepage and homepage.startswith("http") else None)
+
+        # Extract concise tech stack in brief
+        tech_keywords = [
+            "Next.js 14", "Next.js", "React.js", "React", "TypeScript", "JavaScript", "Python", "FastAPI",
+            "Node.js", "Express.js", "Tailwind CSS", "MongoDB", "Mongoose", "PostgreSQL", "SQLite",
+            "Socket.io", "Streamlit", "Docker", "Tauri", "Clerk", "Sanity", "Redux"
+        ]
+        combined_text = f"{language} {description} {readme_text[:1500]}".lower()
+        detected_tech = []
+        for kw in tech_keywords:
+            pattern = r'\b' + re.escape(kw.lower().replace('.js', '')) + r'\b'
+            if re.search(pattern, combined_text):
+                if kw not in detected_tech and not any(kw in x for x in detected_tech):
+                    detected_tech.append(kw)
+            if len(detected_tech) >= 5:
+                break
+        if not detected_tech and language:
+            detected_tech = [language]
+        tech_stack_brief = ", ".join(detected_tech)
 
         # Generate high-impact bullet points
         bullet_points = extract_project_bullet_points(readme_text, description, repo_name, language)
@@ -286,7 +318,8 @@ def sync_github_profile_repositories(
         summary_markdown = (
             f"# {repo_name}\n\n"
             f"**GitHub**: {repo_html_url}\n"
-            f"**Language / Tech**: {language}\n"
+            f"**Tech Stack**: {tech_stack_brief}\n"
+            f"**Timeline**: {timeline}\n"
             f"**Live Demo**: {live_demo_url or 'None'}\n\n"
             f"## Engineering Highlights\n{bullets_formatted}\n"
         )
@@ -307,6 +340,8 @@ def sync_github_profile_repositories(
             "directory_path": virtual_path,
             "commit_hash": pushed_at[:10] if pushed_at else "Remote",
             "live_demo_url": live_demo_url,
+            "tech_stack": tech_stack_brief,
+            "date": timeline,
             "language": language,
             "bullet_points": bullet_points,
             "status": "synchronized"
