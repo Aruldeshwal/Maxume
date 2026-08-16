@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from typing import List, Dict, Any, Optional, Union
 import docx
 from docx import Document
@@ -199,7 +200,19 @@ class DocxEngine:
             # Remove original {{SKILLS}} placeholder
             remove_paragraph(skills_placeholder)
 
-        # Save to output path
+        # Save to output path with fallback if file is currently open/locked in Word
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-        doc.save(output_path)
-        return output_path
+        try:
+            doc.save(output_path)
+            return output_path
+        except (PermissionError, IOError):
+            base_dir = os.path.dirname(os.path.abspath(output_path))
+            file_name, ext = os.path.splitext(os.path.basename(output_path))
+            fallback_path = os.path.join(base_dir, f"{file_name}_new{ext}")
+            try:
+                doc.save(fallback_path)
+                return fallback_path
+            except (PermissionError, IOError):
+                timestamp_path = os.path.join(base_dir, f"{file_name}_{int(time.time())}{ext}")
+                doc.save(timestamp_path)
+                return timestamp_path

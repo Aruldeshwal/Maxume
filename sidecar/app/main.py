@@ -2,11 +2,15 @@
 
 import os
 import sys
+import logging
 from typing import Optional, List, Dict, Any, Union
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("maxume")
 
 # Ensure sidecar directory is on sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -395,7 +399,7 @@ async def optimize_application(payload: OptimizeApplicationRequest):
             projects=all_projects,
             jd_text=jd_text
         )
-        DocxEngine.rebuild_resume(
+        compiled_resume_path = DocxEngine.rebuild_resume(
             template_path=template_path,
             output_path=compiled_resume_path,
             projects=ranked_projects,
@@ -425,16 +429,30 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         research_brief=research_brief
     )
 
-    # Write copy files to output folder
+    # Write copy files to output folder with file-lock resilience
     cover_letter_file = os.path.join(app_output_dir, f"{company_slug}_CoverLetter.txt")
     email_file = os.path.join(app_output_dir, f"{company_slug}_Email.txt")
     try:
         with open(cover_letter_file, "w", encoding="utf-8") as f:
             f.write(cover_letter)
+    except (PermissionError, IOError):
+        cover_letter_file = os.path.join(app_output_dir, f"{company_slug}_CoverLetter_new.txt")
+        try:
+            with open(cover_letter_file, "w", encoding="utf-8") as f:
+                f.write(cover_letter)
+        except Exception:
+            pass
+
+    try:
         with open(email_file, "w", encoding="utf-8") as f:
             f.write(outreach_email)
-    except Exception:
-        pass
+    except (PermissionError, IOError):
+        email_file = os.path.join(app_output_dir, f"{company_slug}_Email_new.txt")
+        try:
+            with open(email_file, "w", encoding="utf-8") as f:
+                f.write(outreach_email)
+        except Exception:
+            pass
 
     # 7. Employee Networking Discovery
     contacts = await lookup_company_employees(company_name=company_clean)
