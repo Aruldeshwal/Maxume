@@ -103,11 +103,31 @@ async def get_config():
         "master_resume_path": os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
     }
 
+class ProjectVisibilityRequest(BaseModel):
+    is_hidden: Optional[int] = None
+
 # Projects & SSOT
 @app.get("/api/projects")
-async def get_projects():
+async def get_projects(include_hidden: bool = Query(True)):
     """Returns list of tracked projects in SSOT database."""
-    return {"projects": db.list_projects()}
+    return {"projects": db.list_projects(include_hidden=include_hidden)}
+
+@app.post("/api/projects/{project_id}/visibility")
+async def toggle_project_visibility(project_id: int, payload: Optional[ProjectVisibilityRequest] = None):
+    """Toggles or updates whether a project is hidden from resumes."""
+    is_hidden = payload.is_hidden if payload else None
+    success = db.toggle_project_visibility(project_id, is_hidden=is_hidden)
+    if not success:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"status": "ok", "project_id": project_id}
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: int):
+    """Permanently removes a project record from SQLite SSOT."""
+    success = db.delete_project(project_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"status": "ok", "deleted_project_id": project_id}
 
 @app.post("/api/projects")
 async def upsert_project(payload: ProjectUpsertRequest):
@@ -278,8 +298,8 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         )
         personalization_status = "Found" if research_brief.status == "FOUND" else "None Found"
 
-    # 3. Pull projects and rerank
-    all_projects = db.list_projects()
+    # 3. Pull projects and rerank (excluding hidden projects)
+    all_projects = db.list_projects(include_hidden=False)
     ranked_projects = await gemini_service.rerank_projects_for_jd(
         jd_text=jd_text,
         candidate_projects=all_projects,

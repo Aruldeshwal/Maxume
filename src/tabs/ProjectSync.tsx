@@ -12,7 +12,10 @@ import {
   Sparkles,
   Layers,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Eye,
+  EyeOff,
+  Trash2
 } from "lucide-react";
 
 interface ProjectItem {
@@ -22,6 +25,7 @@ interface ProjectItem {
   last_commit_hash?: string | null;
   summary_markdown?: string | null;
   live_demo_url?: string | null;
+  is_hidden?: number;
   last_synced_at?: string | null;
   status?: string;
 }
@@ -33,7 +37,8 @@ export const ProjectSync: React.FC = () => {
   const [githubToken, setGithubToken] = useState<string>("");
   const [projectsDir, setProjectsDir] = useState<string>("");
 
-  // Projects & Status
+  // Filter & Projects
+  const [filterView, setFilterView] = useState<"all" | "active" | "hidden">("all");
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -56,7 +61,7 @@ export const ProjectSync: React.FC = () => {
     if (savedUser) setGithubUsername(savedUser);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/projects");
+      const res = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
       if (res.ok) {
         const data = await res.json();
         setProjects(data.projects || []);
@@ -67,6 +72,42 @@ export const ProjectSync: React.FC = () => {
   useEffect(() => {
     fetchConfigAndProjects();
   }, []);
+
+  const handleToggleVisibility = async (proj: ProjectItem) => {
+    if (!proj.id) return;
+    const newHidden = proj.is_hidden === 1 ? 0 : 1;
+
+    // Optimistic UI update
+    setProjects((prev) =>
+      prev.map((p) => (p.id === proj.id ? { ...p, is_hidden: newHidden } : p))
+    );
+
+    try {
+      await fetch(`http://127.0.0.1:8000/api/projects/${proj.id}/visibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_hidden: newHidden }),
+      });
+    } catch {
+      // Revert on error
+      fetchConfigAndProjects();
+    }
+  };
+
+  const handleDeleteProject = async (proj: ProjectItem) => {
+    if (!proj.id) return;
+    if (!window.confirm(`Remove '${proj.directory_name}' from tracked catalog?`)) return;
+
+    setProjects((prev) => prev.filter((p) => p.id !== proj.id));
+
+    try {
+      await fetch(`http://127.0.0.1:8000/api/projects/${proj.id}`, {
+        method: "DELETE",
+      });
+    } catch {
+      fetchConfigAndProjects();
+    }
+  };
 
   const handleGithubSync = async () => {
     if (!githubUsername.trim()) return;
@@ -94,7 +135,7 @@ export const ProjectSync: React.FC = () => {
         });
 
         // Refresh project list
-        const projRes = await fetch("http://127.0.0.1:8000/api/projects");
+        const projRes = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
         if (projRes.ok) {
           const pdata = await projRes.json();
           setProjects(pdata.projects || []);
@@ -137,7 +178,7 @@ export const ProjectSync: React.FC = () => {
           text: `Scanned local directory "${data.scanned_directory}". Synced ${count} subfolder projects!`,
         });
 
-        const projRes = await fetch("http://127.0.0.1:8000/api/projects");
+        const projRes = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
         if (projRes.ok) {
           const pdata = await projRes.json();
           setProjects(pdata.projects || []);
@@ -158,6 +199,15 @@ export const ProjectSync: React.FC = () => {
       setIsSyncing(false);
     }
   };
+
+  const visibleProjects = projects.filter((p) => {
+    if (filterView === "active") return p.is_hidden !== 1;
+    if (filterView === "hidden") return p.is_hidden === 1;
+    return true;
+  });
+
+  const activeCount = projects.filter((p) => p.is_hidden !== 1).length;
+  const hiddenCount = projects.filter((p) => p.is_hidden === 1).length;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
@@ -211,7 +261,7 @@ export const ProjectSync: React.FC = () => {
                   Sync GitHub Public Profile
                 </span>
                 <p className="text-[11px] text-text-muted">
-                  Reads READMEs, parses live demo links (Vercel, Netlify, Render, Cloudflare), and saves summary bullet points.
+                  Reads READMEs, parses live demo links (Vercel, Netlify, Render, Cloudflare), and crafts high-impact bullet points.
                 </p>
               </div>
             </div>
@@ -317,25 +367,52 @@ export const ProjectSync: React.FC = () => {
       )}
 
       {/* Projects Catalog Grid */}
-      <div className="rounded-xl border border-border-subtle bg-background-card overflow-hidden shadow-lg">
-        <div className="px-5 py-3.5 border-b border-border-subtle flex items-center justify-between">
+      <div className="rounded-xl border border-border-subtle bg-background-card overflow-hidden shadow-lg space-y-0">
+        <div className="px-5 py-3.5 border-b border-border-subtle flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <Layers className="w-4 h-4 text-legion-crimson" />
             <span className="text-xs font-bold font-mono text-white uppercase tracking-wider">
               Tracked Project SSOT Catalog ({projects.length})
             </span>
           </div>
-          <span className="text-[11px] font-mono text-text-muted">
-            Stored in maxume_local.db
-          </span>
+
+          {/* Visibility Filter Buttons */}
+          <div className="flex items-center space-x-1 bg-background-deep p-1 rounded-lg border border-border-subtle text-xs font-mono">
+            <button
+              onClick={() => setFilterView("all")}
+              className={`px-2.5 py-1 rounded transition-colors ${
+                filterView === "all" ? "bg-zinc-800 text-white font-bold" : "text-text-muted hover:text-white"
+              }`}
+            >
+              All ({projects.length})
+            </button>
+            <button
+              onClick={() => setFilterView("active")}
+              className={`px-2.5 py-1 rounded transition-colors ${
+                filterView === "active" ? "bg-emerald-950 text-emerald-400 font-bold border border-emerald-800/40" : "text-text-muted hover:text-white"
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              onClick={() => setFilterView("hidden")}
+              className={`px-2.5 py-1 rounded transition-colors ${
+                filterView === "hidden" ? "bg-rose-950 text-rose-400 font-bold border border-rose-800/40" : "text-text-muted hover:text-white"
+              }`}
+            >
+              Hidden ({hiddenCount})
+            </button>
+          </div>
         </div>
 
-        {projects.length === 0 ? (
+        {visibleProjects.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <AlertCircle className="w-10 h-10 text-text-muted mx-auto opacity-40" />
-            <div className="text-sm font-mono text-text-primary">No projects synchronized yet.</div>
+            <div className="text-sm font-mono text-text-primary">
+              {filterView === "hidden" ? "No hidden projects." : "No projects found."}
+            </div>
             <p className="text-xs text-text-secondary max-w-md mx-auto leading-relaxed">
-              Enter your GitHub username above and click <strong>&quot;Sync Repositories&quot;</strong> to automatically pull your project documentation, live links, and bullet points.
+              Sync your GitHub profile above to populate projects into your database.
             </p>
           </div>
         ) : (
@@ -345,20 +422,22 @@ export const ProjectSync: React.FC = () => {
                 <tr>
                   <th className="px-4 py-3">Project / Repository</th>
                   <th className="px-4 py-3">Live Demo URL</th>
-                  <th className="px-4 py-3">Source Origin</th>
-                  <th className="px-4 py-3">Highlights</th>
+                  <th className="px-4 py-3">Resume Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle text-text-primary">
-                {projects.map((proj, i) => {
+                {visibleProjects.map((proj, i) => {
                   const isExpanded = expandedSummary === proj.directory_name;
+                  const isHidden = proj.is_hidden === 1;
+
                   return (
                     <React.Fragment key={i}>
-                      <tr className="hover:bg-background-hover transition-colors">
+                      <tr className={`transition-colors ${isHidden ? "bg-background-deep/50 opacity-60" : "hover:bg-background-hover"}`}>
                         <td className="px-4 py-3.5 font-semibold text-white">
                           <div className="flex items-center space-x-2">
-                            <FileText className="w-3.5 h-3.5 text-legion-crimson flex-shrink-0" />
-                            <span>{proj.directory_name}</span>
+                            <FileText className={`w-3.5 h-3.5 flex-shrink-0 ${isHidden ? "text-text-muted" : "text-legion-crimson"}`} />
+                            <span className={isHidden ? "line-through text-text-muted" : ""}>{proj.directory_name}</span>
                           </div>
                         </td>
 
@@ -378,26 +457,40 @@ export const ProjectSync: React.FC = () => {
                           )}
                         </td>
 
-                        <td className="px-4 py-3.5 text-text-muted text-[11px]">
-                          {proj.directory_path.startsWith("github.com") ? (
-                            <span className="flex items-center space-x-1 text-sky-400">
-                              <Github className="w-3 h-3" />
-                              <span>{proj.directory_path}</span>
-                            </span>
-                          ) : (
-                            <span className="truncate max-w-[150px] inline-block">{proj.directory_path}</span>
-                          )}
-                        </td>
-
                         <td className="px-4 py-3.5">
                           <button
-                            onClick={() => setExpandedSummary(isExpanded ? null : proj.directory_name)}
-                            className="flex items-center space-x-1 text-[11px] font-mono text-text-secondary hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                            onClick={() => handleToggleVisibility(proj)}
+                            className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all border ${
+                              isHidden
+                                ? "bg-rose-950/60 text-rose-400 border-rose-800/60 hover:bg-rose-900"
+                                : "bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900"
+                            }`}
+                            title={isHidden ? "Click to include in resume" : "Click to hide from resume"}
                           >
-                            <Sparkles className="w-3 h-3 text-legion-crimson" />
-                            <span>{isExpanded ? "Hide Points" : "View Points"}</span>
-                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            <span>{isHidden ? "Hidden from Resume" : "Active on Resume"}</span>
                           </button>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="inline-flex items-center space-x-2">
+                            <button
+                              onClick={() => setExpandedSummary(isExpanded ? null : proj.directory_name)}
+                              className="flex items-center space-x-1 text-[11px] font-mono text-text-secondary hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                            >
+                              <Sparkles className="w-3 h-3 text-legion-crimson" />
+                              <span>{isExpanded ? "Hide" : "Points"}</span>
+                              {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            </button>
+
+                            <button
+                              onClick={() => handleDeleteProject(proj)}
+                              className="p-1.5 rounded text-text-muted hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                              title="Delete permanently from catalog"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
 

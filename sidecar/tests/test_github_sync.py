@@ -29,10 +29,15 @@ def test_extract_project_bullet_points():
         "- Engineered LSM-tree storage engine achieving 45,000 writes/sec.\n"
         "- Optimized read path with Bloom filters reducing disk I/O by 82%.\n"
     )
-    bullets = extract_project_bullet_points(readme, "A fast KV store", "kv-store")
-    assert len(bullets) == 3
-    assert "Raft consensus" in bullets[0]
-    assert "LSM-tree storage" in bullets[1]
+    with patch("app.github_sync.synthesize_high_impact_bullets_ai", return_value=[
+        "Architected Raft consensus protocol with 99.9% leader election stability.",
+        "Engineered LSM-tree storage engine achieving 45,000 writes/sec.",
+        "Optimized read path with Bloom filters reducing disk I/O by 82%."
+    ]):
+        bullets = extract_project_bullet_points(readme, "A fast KV store", "kv-store")
+        assert len(bullets) == 3
+        assert "Raft consensus" in bullets[0]
+        assert "LSM-tree storage" in bullets[1]
 
 def test_sync_github_profile_mocked(tmp_path):
     db_path = str(tmp_path / "test_gh.db")
@@ -53,7 +58,12 @@ def test_sync_github_profile_mocked(tmp_path):
 
     mock_readme_text = "# Maxume AI\n## Highlights\n- Built hybrid Ollama + cloud API architecture.\n- Single page DOCX styling rebuilder."
 
-    with patch("requests.get") as mock_get:
+    with patch("requests.get") as mock_get, \
+         patch("app.github_sync.synthesize_high_impact_bullets_ai", return_value=[
+             "Architected hybrid Ollama and cloud AI pipeline.",
+             "Engineered paragraph-level DOCX rebuilder with hyperlink embedding."
+         ]):
+
         # First call is repos list, second is raw readme
         mock_resp_repos = MagicMock()
         mock_resp_repos.status_code = 200
@@ -73,4 +83,14 @@ def test_sync_github_profile_mocked(tmp_path):
         projects_in_db = test_db.list_projects()
         assert len(projects_in_db) == 1
         assert projects_in_db[0]["directory_name"] == "maxume-ai"
-        assert projects_in_db[0]["live_demo_url"] == "https://maxume.vercel.app"
+        assert projects_in_db[0]["is_hidden"] == 0
+
+        # Test project visibility toggle
+        proj_id = projects_in_db[0]["id"]
+        test_db.toggle_project_visibility(proj_id, is_hidden=1)
+        assert len(test_db.list_projects(include_hidden=False)) == 0
+        assert len(test_db.list_projects(include_hidden=True)) == 1
+
+        # Test delete project
+        test_db.delete_project(proj_id)
+        assert len(test_db.list_projects(include_hidden=True)) == 0

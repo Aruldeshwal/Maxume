@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS projects (
     last_commit_hash TEXT,
     summary_markdown TEXT,
     live_demo_url TEXT,
+    is_hidden INTEGER DEFAULT 0,
     last_synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -85,6 +86,11 @@ class Database:
         """Runs the SQLite schema migration scripts."""
         with self.get_connection() as conn:
             conn.executescript(SCHEMA_SQL)
+            # Automatic schema migration for existing databases
+            try:
+                conn.execute("ALTER TABLE projects ADD COLUMN is_hidden INTEGER DEFAULT 0;")
+            except Exception:
+                pass
             conn.commit()
 
     # --- Project SSOT Operations ---
@@ -94,10 +100,33 @@ class Database:
             row = cursor.fetchone()
             return dict(row) if row else None
 
-    def list_projects(self) -> List[Dict[str, Any]]:
+    def list_projects(self, include_hidden: bool = True) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM projects ORDER BY directory_name ASC")
+            if include_hidden:
+                cursor = conn.execute("SELECT * FROM projects ORDER BY is_hidden ASC, directory_name ASC")
+            else:
+                cursor = conn.execute("SELECT * FROM projects WHERE is_hidden = 0 ORDER BY directory_name ASC")
             return [dict(row) for row in cursor.fetchall()]
+
+    def toggle_project_visibility(self, project_id: int, is_hidden: Optional[int] = None) -> bool:
+        """Toggles or sets project visibility (is_hidden: 1 = hidden from resume, 0 = visible)."""
+        with self.get_connection() as conn:
+            if is_hidden is not None:
+                cursor = conn.execute("UPDATE projects SET is_hidden = ? WHERE id = ?", (is_hidden, project_id))
+            else:
+                cursor = conn.execute(
+                    "UPDATE projects SET is_hidden = CASE WHEN is_hidden = 1 THEN 0 ELSE 1 END WHERE id = ?",
+                    (project_id,)
+                )
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def delete_project(self, project_id: int) -> bool:
+        """Deletes a project permanently from the SSOT database."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+            conn.commit()
+            return cursor.rowcount > 0
 
     def upsert_project(
         self,
