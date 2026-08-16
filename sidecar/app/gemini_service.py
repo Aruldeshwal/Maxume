@@ -144,41 +144,56 @@ class GeminiService:
 
         prefiltered = candidate_projects[:8]
 
+        def extract_clean_bullets_from_text(summary_txt: str) -> List[str]:
+            valid = []
+            for line in (summary_txt or "").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                lower = stripped.lower()
+                if any(lower.startswith(prefix) for prefix in ["github:", "**github", "language:", "**language", "live demo:", "**live demo", "url:", "tech"]):
+                    continue
+                clean = re.sub(r'^[-*•\d.)\s]+', '', stripped).replace("**", "").replace("__", "").strip()
+                if len(clean) > 20 and not clean.startswith("http"):
+                    valid.append(clean)
+            return valid
+
         def get_local_fallback() -> List[Dict[str, Any]]:
             fallback_list = []
             for i, p in enumerate(prefiltered[:top_k]):
                 summary_txt = p.get("summary_markdown", "")
-                extracted_bullets = [
-                    line.lstrip("-*• ").strip()
-                    for line in summary_txt.splitlines()
-                    if line.strip().startswith(("-", "*", "•")) and len(line.strip()) > 15
-                ]
+                extracted_bullets = extract_clean_bullets_from_text(summary_txt)
                 if not extracted_bullets:
-                    extracted_bullets = ["Engineered high performance component.", "Optimized storage and API latency."]
+                    extracted_bullets = [
+                        f"Architected core backend architecture and services for {p.get('directory_name', 'project')}.",
+                        "Engineered modular data pipelines optimizing response latency."
+                    ]
 
                 fallback_list.append({
                     "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
                     "tech_stack": p.get("tech_stack", "General Engineering"),
                     "live_demo_url": p.get("live_demo_url"),
-                    "bullets": extracted_bullets[:4]
+                    "bullets": extracted_bullets[:2]
                 })
             return fallback_list
 
         async def call_rerank():
             projects_summary_str = ""
             for i, p in enumerate(prefiltered):
+                clean_bullets = extract_clean_bullets_from_text(p.get('summary_markdown', ''))
+                bullets_joined = "\n".join(f"- {b}" for b in clean_bullets[:3])
                 projects_summary_str += (
                     f"Project {i+1}:\n"
                     f"Name: {p.get('directory_name') or p.get('title')}\n"
-                    f"Tech Stack: {p.get('tech_stack', 'N/A')}\n"
                     f"URL: {p.get('live_demo_url', '')}\n"
-                    f"Logs/Summary: {p.get('summary_markdown', '')[:400]}\n\n"
+                    f"Highlights:\n{bullets_joined}\n\n"
                 )
 
             prompt = (
                 "You are an expert technical recruiter and resume strategist. "
-                "Analyze the candidate's projects and select the top 3-4 most relevant projects for the given Job Description. "
-                "For each selected project, provide: 'title', 'tech_stack', 'live_demo_url', and 3-4 quantitative, impactful 'bullets'. "
+                "Analyze the candidate's projects and select the top 2-3 most relevant projects for the given Job Description. "
+                "For each selected project, provide: 'title', 'tech_stack', 'live_demo_url', and 2 concise, standout engineering 'bullets'. "
+                "Do NOT include URLs, GitHub links, or labels in the bullet points. "
                 "Output ONLY a valid JSON array of objects with keys: 'title', 'tech_stack', 'live_demo_url', 'bullets'.\n\n"
                 f"JOB DESCRIPTION:\n{jd_text[:1500]}\n\n"
                 f"CANDIDATE PROJECTS:\n{projects_summary_str}"
@@ -201,6 +216,13 @@ class GeminiService:
                         clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
                         try:
                             ranked = json.loads(clean_json_str)
+                            # Clean each bullet to guarantee no labels
+                            for r in ranked:
+                                r["bullets"] = [
+                                    re.sub(r'^[-*•\d.)\s]+', '', b).replace("**", "").strip()
+                                    for b in r.get("bullets", [])
+                                    if len(b.strip()) > 15 and not any(b.lower().startswith(x) for x in ["github:", "language:", "live demo:", "url:"])
+                                ][:2]
                             return ranked[:top_k]
                         except Exception:
                             return get_local_fallback()
