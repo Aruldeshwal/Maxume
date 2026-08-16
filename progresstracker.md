@@ -15,7 +15,9 @@
 
 ### Phase 2: Resume Processing & Cloud Free-Tier Pipeline (Completed)
 - [x] Native Word OXML `<w:hyperlink>` engine with custom RGB styling.
-- [x] Calibrated single-page resume formatting (max 3 projects, max 2 bullets, compact `Pt` spacing).
+- [x] Calibrated single-page resume formatting (max 3 projects, 3 bullets each to fill page headroom, compact `Pt` spacing).
+- [x] Project header layout formatting: `Project Title | Tech Stack in Brief | Timeline Dates`.
+- [x] Windows file-lock resilient document saver (`DocxEngine.rebuild_resume`).
 - [x] Strict metadata filtering (stripping `GitHub:`, `Language:`, headers, and URLs from bullets).
 - [x] Authentic Candidate Skills Engine ([`skills_engine.py`](file:///C:/Users/aruld/OneDrive/Desktop/Maxume/sidecar/app/skills_engine.py)) with zero fake tech hallucinations.
 - [x] Multi-screenshot ingestion & clipboard paste listener (`Ctrl+V`).

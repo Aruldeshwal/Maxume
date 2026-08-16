@@ -1,7 +1,7 @@
 # Project Overview & Single Source of Truth (SSOT)
 
 ## 1. Executive Summary
-**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, enforces strict single-page limits, and personalizes application materials with verified company news and referral contacts.
+**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, formats concise tech stacks and timelines, enforces strict single-page limits with adaptive bullet filling, and personalizes application materials with verified company news and referral contacts.
 
 ---
 
@@ -15,7 +15,7 @@ graph TD
     C --> F[DocxEngine]
     E --> F
     B -->|Skills Engine (Zero Hallucinations)| F
-    F -->|OXML Hyperlinks + Pt Spacing| G[Single-Page Master_Resume.docx]
+    F -->|OXML Hyperlinks + Tech Stack + Timeline| G[Single-Page Master_Resume.docx]
     D -->|Real-Time News RSS Wire| H[Company Research Signals]
     H -->|3-Stage Containment Guard| I[Personalized Cover Letter & Outreach]
     D -->|Targeted Persona Engine| J[LinkedIn Referral Contacts & Drafts]
@@ -24,13 +24,15 @@ graph TD
 ### Pillar 1: Project Knowledge Base (SSOT)
 - **Watcher & GitHub Sync**: Tracks local repository folders and GitHub profile repos (`@Aruldeshwal`).
 - **AI Bullet Generation**: Synthesizes engineering bullet points using Google's XYZ formula (*Accomplished [X] as measured by [Y], by doing [Z]*).
-- **Live Demo Discovery**: Extracts live URLs (Vercel, Render, Netlify, Streamlit) and preserves them in project metadata.
+- **Live Demo & Timeline Extraction**: Automatically extracts live URLs and computes active project timelines (e.g. `Oct 2024 – Dec 2024`).
 - **Visibility Toggle**: Supports marking repositories as `Active on Resume` or `Hidden from Resume` to keep non-relevant repos off the resume.
 
 ### Pillar 2: Paragraph-Level DOCX Engine
 - **Active Word OXML Hyperlinks**: Generates Word `<w:hyperlink>` relationships directly in python-docx, styling live project titles in bold crimson with active external URLs.
-- **Strict 1-Page Layout Guarantee**: Bounded to top 3 projects and max 2 bullets each, formatted with compact paragraph metrics (`space_before=0`, `space_after=1.5pt`, `line_spacing=1.05`) to guarantee fit on 1 page.
-- **Metadata Cleansing**: Filters out markdown syntax, bold labels, and repository URLs from resume bullet text.
+- **Brief Tech Stack & Timeline**: Formats project headers with title, brief tech stack, and timeline dates: `Project Title | Tech Stack | Month Year – Month Year`.
+- **Adaptive Bullet Headroom Filling**: Dynamically allocates 3 high-impact bullets per project (or up to 4 for 2 projects) with calibrated paragraph line spacing (`Pt(0)` before, `Pt(1.5)` after, `1.05` line-spacing) ensuring the document strictly fills exactly 1 single page.
+- **Metadata Cleansing**: Automatically filters out markdown syntax, bold labels, and repository URLs from resume bullet text.
+- **File-Lock Safe Writer**: Catches Windows Word file-lock exceptions and saves to safe fallback paths without failing the run.
 
 ### Pillar 3: Authentic Skills Synthesis
 - **Zero-Hallucination Grounding**: Scans all 12 verified repositories and master resume text to whitelist only authentic technologies.

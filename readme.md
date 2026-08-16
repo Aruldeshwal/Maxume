@@ -15,8 +15,11 @@ Maxume is a tactical desktop and web application that automates technical resume
 
 ### 2. Single-Page Paragraph-Level DOCX Engine
 * **Native Word OXML Hyperlinks**: Injects clickable hyperlinks with custom HEX styling directly into your master `.docx` template.
-* **Strict Single-Page Guardrail**: Automatically bounds projects (top 3) and bullets (2 per project) with calibrated paragraph line spacing (`Pt` formatting) to guarantee the final resume **strictly fits on exactly 1 single page**.
-* **Clean Metadata Stripping**: Filters out markdown headers, repo URLs, and metadata tags (`GitHub:`, `Language:`) to ensure only authentic achievements enter your resume.
+* **Brief Tech Stack & Timeline Dates**: Formats project headings with title, tech stack in brief, and exact timeline:
+  $$\text{\textbf{Project Title (Live Link)}} \mid \textit{Tech Stack in Brief} \mid \textit{Month Year – Month Year}$$
+* **Adaptive Bullet Headroom Filling**: Dynamically expands bullet coverage (3 high-impact bullets per project, or up to 4 for 2 projects) to maximize page density while strictly fitting on **exactly 1 single page**.
+* **Clean Metadata Stripping**: Filters out markdown headers, repo URLs, and metadata tags (`GitHub:`, `Language:`, `Tech Stack:`) to ensure only authentic achievements enter your resume.
+* **Windows File-Lock Resilience**: Automatically detects if Microsoft Word has the resume file open, saving to a fallback filename without failing the run.
 
 ### 3. Authentic Skills Synthesizer (Zero Hallucinations)
 * **Codebase-Grounded Extraction**: Scans all 12 verified local/GitHub projects and master template to extract only genuine technical competencies.

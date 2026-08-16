@@ -4,6 +4,16 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.1.0] - 2026-08-17 (Final Polish & Feature Completion)
+
+### Added
+- **Project Header Tech Stack & Timeline**: Projects on the Word resume now display brief tech stacks and formatted timeline dates (`Project Title | Tech Stack | Month Year – Month Year`).
+- **Adaptive Bullet Headroom Filling**: Expanded bullet allocation to 3 high-impact bullets per project (or up to 4 for 2 projects) to maximize page density while preserving the strict 1-page ceiling.
+- **Windows File-Lock Resilience**: Implemented automated fallback file saving in `DocxEngine` and `main.py` to prevent `PermissionError` crashes when Word documents are actively open in Microsoft Word.
+- **Typing & Diagnostics Hardening**: Fully typed `Tuple` annotations in `gemini_service.py` and initialized central logger instance in `main.py`.
+
+---
+
 ## [v1.0.0] - 2026-08-17 (Production Release)
 
 ### Added

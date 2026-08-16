@@ -38,9 +38,19 @@
 ## ADR-008: Calibrated Paragraph Metrics for Strict 1-Page Resume Layout
 * **Status**: Accepted
 * **Context**: Injected projects and bullets caused the resume to spill over to page 2.
-* **Decision**: Enforce max 3 projects and max 2 bullets each, calibrated with exact paragraph metrics (`Pt(0)` before, `Pt(1.5)` after, `1.05` line spacing) to guarantee a strict 1-page fit.
+* **Decision**: Enforce max 3 projects and calibrated point-level paragraph metrics (`Pt(0)` before, `Pt(1.5)` after, `1.05` line spacing) to guarantee a strict 1-page fit.
 
 ## ADR-009: Multi-Screenshot Base64 Ingestion with Clipboard Paste (`Ctrl+V`)
 * **Status**: Accepted
 * **Context**: Job descriptions often span multiple screenshots and users prefer pasting directly from clipboard.
 * **Decision**: Add a global `Ctrl+V` paste listener and multi-image carousel strip, compressing images under 300KB before dispatching to Gemini Multimodal OCR.
+
+## ADR-010: Adaptive Document Headroom Filling for Maximum Page Density
+* **Status**: Accepted
+* **Context**: Fixed 2-bullet caps left excessive unused whitespace at the bottom of the resume page.
+* **Decision**: Dynamically allocate 3 bullets per project (or 4 bullets for 2 projects) with padding fallbacks to maximize information density while respecting the single-page boundary.
+
+## ADR-011: Windows File-Lock Tolerant Document Writer
+* **Status**: Accepted
+* **Context**: On Windows, opening a `.docx` file in Microsoft Word locks the file from being overwritten, causing `PermissionError: [Errno 13]`.
+* **Decision**: Wrap document and text file writers in try-except blocks that detect `PermissionError` and automatically write to a timestamped / suffixed path instead of crashing.
