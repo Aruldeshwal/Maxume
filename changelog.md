@@ -22,6 +22,11 @@ Categories per release: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
 - Google Custom Search Engine (CSE) LinkedIn Employee Lookup module (`employee_lookup.py`).
 - Groq LPU Creative Generation service (`groq_service.py`) for grounded cover letters, referrals, and emails.
 - Token-Bucket Rate Limiter and asynchronous backoff scheduler (`scheduler.py`).
+- Legion Dark Mode React UI tabs: `Dashboard.tsx`, `ProjectSync.tsx`, `Optimizer.tsx`, and `HistoryLogs.tsx`.
+- Personalization `SignalCard.tsx` with distinct verified and muted informational none-found notice states.
+- Networking `ContactCard.tsx` with referral pitch generator and clipboard copying.
+- Live execution stream logger `TerminalLog.tsx` with phase telemetry and guard indicators.
+- Vitest unit test suite covering `SignalCard`, `QuotaRing`, `TerminalLog`, and `App`.
 
 ---
 

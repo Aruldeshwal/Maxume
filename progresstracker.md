@@ -85,10 +85,10 @@ CREATE TABLE IF NOT EXISTS company_research_signals (
       the research brief as a grounding constraint
 
   Phase 4: Legion UI & Polish (Weeks 7-8)
-  [ ] React Tailwind styling with Legion Dark Mode theme
-  [ ] Personalization Brief / SignalCard UI (found + "none found" states)
-  [ ] Asyncio rate limit queue & backoff telemetry logs on UI
-  [ ] Multi-platform build packaging (.msi, .deb, .app)
+  [x] React Tailwind styling with Legion Dark Mode theme
+  [x] Personalization Brief / SignalCard UI (found + "none found" states)
+  [x] Asyncio rate limit queue & backoff telemetry logs on UI
+  [x] Multi-platform build packaging (.msi, .deb, .app)
 ```
 
 ---

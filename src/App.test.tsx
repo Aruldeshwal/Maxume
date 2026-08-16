@@ -6,7 +6,7 @@ describe("Maxume App Entrypoint", () => {
   it("renders Maxume title and navigation items", () => {
     render(<App />);
     expect(screen.getByText("MAXUME")).toBeInTheDocument();
-    expect(screen.getByText(/Local-First Job Application Assistant/i)).toBeInTheDocument();
+    expect(screen.getByText(/Maxume Job Application Assistant/i)).toBeInTheDocument();
     expect(screen.getByText(/Home Dashboard/i)).toBeInTheDocument();
     expect(screen.getByText(/Projects Sync/i)).toBeInTheDocument();
     expect(screen.getByText(/Apply & Optimize/i)).toBeInTheDocument();
