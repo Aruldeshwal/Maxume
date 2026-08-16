@@ -1,50 +1,132 @@
-# Maxume: AI Job Application Maximizer
-### Complete Engineering Specifications & Project Blueprint
+# Maxume 🦅
+> **Local-First, Airgapped AI Job Application Assistant with Hybrid Cloud Intelligence**
 
-Maxume is a local-first hybrid desktop application designed to maximize job application quality and speed. It orchestrates a local open-weights LLM with zero-cost cloud APIs to produce tailored resumes, cover letters, personalized outreach emails, and targeted networking referral campaigns — and, distinctively, grounds that personalization in real, verifiable, company-specific signals rather than generic template language.
-
----
-
-## Documentation Directory
-
-This blueprint consists of the following documents. They are the single source of truth for anyone (human or AI coding agent) implementing Maxume — read them before writing code, and keep them updated as the implementation evolves.
-
-| # | File | Purpose |
-|---|---|---|
-| 1 | `readme.md` | System entry point, design philosophy, quick-start roadmap |
-| 2 | `architecture.md` | System topology, hybrid pipeline mechanics, local/cloud boundaries |
-| 3 | `projectoverview.md` | Core workflow, incremental Git-sync, DOCX style-copying algorithm |
-| 4 | `companyresearch.md` | Company-signal scraping pipeline and the hallucination guard |
-| 5 | `ui.md` | Aesthetic and UI layout spec (Legion Red & Black dark mode) |
-| 6 | `codestandards.md` | Folder layout, rate limiting, code quality rules |
-| 7 | `progresstracker.md` | Phased timeline, milestones, SQLite schema |
-| 8 | `gitworkflow.md` | Branching model, micro-commit discipline, release checklist |
-| 9 | `changelog.md` | Running log of shipped changes, Conventional Commits mapping |
-| 10 | `security.md` | PII isolation, credential storage, scraping ethics |
-| 11 | `apicontracts.md` | JSON schemas for Ollama, Gemini, Groq, Google CSE, and company-signal fetch |
-| 12 | `envsetup.md` | Installation, dependencies, bootstrap sequence |
-| 13 | `decisions.md` | Architecture Decision Records (ADRs) |
-| 14 | `difficulties.md` | Technical risk register: VRAM, rate limits, scraping brittleness, hallucination |
-| 15 | `testing.md` | Test strategy: unit, integration, manual QA gates |
-| 16 | `learnings.md` | Retrospective insights on local-first LLM product development |
-| 17 | `interviewprep.md` | Interview-ready Q&A mapped to Maxume's design decisions |
-| 18 | `cliprompt.md` | The master execution prompt for scaffolding Maxume with an agentic coding CLI (Claude Code / Cursor / Aider) |
+Maxume is a tactical desktop and web application that automates technical resume customization, cover letter synthesis, company signal research, and networking referral outreach. It pairs **local-first privacy and local LLM inference (Ollama)** with **high-speed, zero-cost cloud AI (Groq LPU & Google Gemini Flash)** to produce tailored, recruiter-ready application packs in under 30 seconds.
 
 ---
 
-## Key Design Principles
+## 🌟 Key Architecture & Capabilities
 
-*   **Absolute Privacy**: PII-containing data (master resume, contact details) is processed exclusively by the local LLM (Ollama), or opt-in cloud failover only with explicit, per-session consent.
-*   **Zero Operating Cost**: Built entirely on permanent free tiers — Ollama (local), Gemini Developer API, Groq Cloud, Google Custom Search.
-*   **VRAM Containment**: Targets an RTX 3060 Laptop (6GB VRAM), keeping local inference under a ~5.2GB working budget via context capping and Flash Attention.
-*   **Tauri v2 + Python Sidecar**: Native Rust webview UI, freeing hardware headroom for local AI inference.
-*   **Grounded Personalization, Not Fabrication**: Every company-specific claim in generated cover letters and outreach emails must trace back to a real, cited, recently-fetched source. If no such signal exists, Maxume says so explicitly rather than inventing one — see `companyresearch.md`.
+### 1. Incremental Git Project Watcher & GitHub Profile Sync
+* **Automatic Repository Discovery**: Scans local directories or syncs directly with public GitHub profiles (`@Aruldeshwal`).
+* **AI Bullet Synthesizer**: Uses **Google's XYZ Formula** (*"Accomplished [X] as measured by [Y], by doing [Z]"*) to generate high-impact, architecture-focused engineering bullet points.
+* **Live Demo Extraction**: Automatically extracts live demo links (Vercel, Render, Streamlit, etc.) and embeds them directly into project title hyperlinks.
+* **Granular Visibility Control**: Toggle projects between **Active on Resume** and **Hidden from Resume**, or delete test repositories with 1 click.
+
+### 2. Single-Page Paragraph-Level DOCX Engine
+* **Native Word OXML Hyperlinks**: Injects clickable hyperlinks with custom HEX styling directly into your master `.docx` template.
+* **Strict Single-Page Guardrail**: Automatically bounds projects (top 3) and bullets (2 per project) with calibrated paragraph line spacing (`Pt` formatting) to guarantee the final resume **strictly fits on exactly 1 single page**.
+* **Clean Metadata Stripping**: Filters out markdown headers, repo URLs, and metadata tags (`GitHub:`, `Language:`) to ensure only authentic achievements enter your resume.
+
+### 3. Authentic Skills Synthesizer (Zero Hallucinations)
+* **Codebase-Grounded Extraction**: Scans all 12 verified local/GitHub projects and master template to extract only genuine technical competencies.
+* **ATS-Optimized Categories**: Groups skills into *Programming Languages*, *Frameworks & Web*, *Databases & Cloud/DevOps*, and *Core Competencies & AI*.
+* **JD Relevance Ranking**: Prioritizes candidate skills requested by the target Job Description at the front of each category without hallucinating unrepresented tech (e.g. Go, Rust).
+
+### 4. Real-Time Company News Wire & 3-Stage Hallucination Guard
+* **Real-Time News Wire**: Integrates Google News RSS and live press wires to pull dated news, product launches, and funding rounds from verified Tier 1/Tier 2 publications (*Reuters*, *blog.google*, *TechCrunch*, *CNBC*, etc.).
+* **Deterministic Containment Check**: Post-hoc verification algorithm (`passes_containment_check`) validates that every entity, metric, and claim exists in the source text before entering your cover letter.
+
+### 5. Targeted Networking & Referral Outreach Hub
+* **Role-Specific Personas**: Synthesizes targeted referral contacts (*Senior Engineers*, *Engineering Managers*, *Technical Recruiters*) with direct LinkedIn search links.
+* **75-Word Referral Pitches**: Generates personalized, concise outreach messages ready to copy and send with a single click.
+
+### 6. Seamless Multi-Screenshot & Clipboard OCR (`Ctrl+V`)
+* **Instant Clipboard Pasting**: Press `Ctrl+V` anywhere in the Optimizer tab to paste job description screenshots directly from your clipboard (e.g. `Win + Shift + S`).
+* **Multi-Screenshot Carousel**: Upload and inspect multiple screenshot parts with live thumbnail previews and individual removal.
+* **Pillow Grayscale Compression**: Compresses images below 300KB before dispatching to Gemini Multimodal OCR.
 
 ---
 
-## Quick Start
+## 🛠️ Technology Stack
 
-1. Read `envsetup.md` and provision your local Ollama model + free-tier API keys.
-2. Read `architecture.md` and `projectoverview.md` to understand the pipeline end to end.
-3. If using an agentic coding CLI to scaffold the app, hand it `cliprompt.md` directly — it references every other doc by name and encodes the build order, git discipline, and quality gates.
-4. Track implementation against `progresstracker.md`'s phase checklist.
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend UI** | React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons |
+| **Desktop Shell** | Tauri v2 (Rust) |
+| **Backend Sidecar** | Python 3.13, FastAPI, Uvicorn, SQLite3 |
+| **Document Processing** | `python-docx`, Word OXML Manipulation, Pillow |
+| **Local LLM** | Ollama (`qwen2.5:7b-instruct`) with dynamic VRAM guardrails |
+| **Cloud AI ($0/mo)** | Groq LPU (`llama-3.3-70b-versatile`), Google Gemini (`gemini-2.5-flash`) |
+| **Testing** | Pytest, Vitest, AnyIO, Asyncio |
+
+---
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+1. **Node.js** (v18+) & **npm**
+2. **Python** (3.10+) with `venv`
+3. *(Optional)* **Ollama** installed with `ollama pull qwen2.5:7b-instruct`
+
+### 1. Backend Setup
+```powershell
+# Navigate to sidecar and activate virtual environment
+cd sidecar
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start FastAPI Sidecar (runs on http://127.0.0.1:8000)
+python app/main.py
+```
+
+### 2. Frontend Setup
+```powershell
+# In the project root directory
+npm install
+
+# Start Vite Development Server (runs on http://localhost:5173)
+npm run dev
+```
+
+### 3. Run Automated Tests
+```powershell
+# Run backend Python tests (37 tests)
+.\sidecar\venv\Scripts\pytest.exe sidecar/tests/
+
+# Run frontend Vitest tests (7 tests)
+npm run test
+```
+
+---
+
+## 📁 Repository Structure
+
+```
+Maxume/
+├── sidecar/                   # Python FastAPI Backend Engine
+│   ├── app/
+│   │   ├── main.py            # REST Endpoints & Orchestration
+│   │   ├── database.py        # SQLite SSOT & Thread-Safe Transactions
+│   │   ├── docx_engine.py     # OXML Hyperlink & Paragraph DOCX Rebuilder
+│   │   ├── github_sync.py     # GitHub Profile Sync & AI XYZ Bullet Synthesizer
+│   │   ├── skills_engine.py   # Code-Grounded Candidate Skills Categorizer
+│   │   ├── company_research.py# Real-Time News Wire & Hallucination Guard
+│   │   ├── employee_lookup.py # Targeted LinkedIn Networking Personas
+│   │   ├── groq_service.py    # High-Speed Creative Copy Generation
+│   │   ├── gemini_service.py  # Multi-Screenshot Multimodal OCR & Project Reranking
+│   │   ├── scheduler.py       # Token-Bucket Rate Limiter & Backoff
+│   │   └── image_optimizer.py # Pillow Grayscale Image Compressor
+│   └── tests/                 # Comprehensive Backend Pytest Suite
+├── src/                       # React 18 + TypeScript Frontend
+│   ├── components/            # Reusable UI (QuotaRing, SignalCard, ContactCard, etc.)
+│   ├── tabs/                  # Main Views (Dashboard, ProjectSync, Optimizer, HistoryLogs)
+│   └── App.tsx                # Persistent Tab Navigation & Live Telemetry
+├── Master_Resume.docx         # Master Resume Template (Contains {{PROJECTS}} & {{SKILLS}})
+└── package.json               # Frontend Tooling & Scripts
+```
+
+---
+
+## 🔒 Security & Privacy
+* **Airgapped Storage**: Master resumes, local source code, and generated application packs remain stored 100% locally on your file system.
+* **$0/Month Operating Cost**: Built entirely on generous free developer tiers (Groq 14.4k req/day, Gemini 1000 req/day, Ollama Local).
+* **Strict Containment Check**: Prevents fabricated AI claims from reaching prospective employers.
+
+---
+
+## 📄 License
+MIT License. Created by [Arul Deshwal](https://github.com/Aruldeshwal).

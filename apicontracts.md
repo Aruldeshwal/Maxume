@@ -1,230 +1,155 @@
-# API Contracts & Interface Definitions: Maxume
+# API Data Contracts & Endpoint Specifications
 
-## 1. Local Ollama Integration Contract
+## Base URL
+`http://127.0.0.1:8000`
 
-Maxume interacts with the local **Ollama** server over localhost using standardized JSON payloads.
+---
 
-*   **Default Endpoint**: `POST http://localhost:11434/api/generate`
-*   **Protocol**: JSON
-*   **Model**: `qwen2.5:7b-instruct` — matches the model pulled in `envsetup.md` (`ollama pull qwen2.5:7b-instruct`) and the `OLLAMA_MODEL_NAME` value in `.env`. Keep these three references in sync if the default model ever changes.
+## 1. Project Management Endpoints
 
-### Input Payload Schema
-Caps `num_ctx` to **2048** and enables Flash Attention, keeping the model within the ~5.2GB VRAM budget on an RTX 3060 Laptop.
-
+### `GET /api/projects`
+Returns all indexed local and GitHub repositories.
+* **Query Parameters**:
+  * `include_hidden` (boolean, optional, default: `true`)
+* **Response**:
 ```json
-{
-  "model": "qwen2.5:7b-instruct",
-  "prompt": "Extract the key professional technical achievements from the following project file. Structure your output into 4 concise bullet points.\n\nProject Logs:\n[INSERT RAW LOGS]",
-  "stream": false,
-  "options": {
-    "num_ctx": 2048,
-    "temperature": 0.2,
-    "top_p": 0.9,
-    "num_predict": 512
+[
+  {
+    "id": 1,
+    "directory_name": "EzNotes",
+    "summary_markdown": "# EzNotes\n**Live Demo**: https://eznotes.onrender.com\n...",
+    "tech_stack": "TypeScript, Next.js, React",
+    "language": "TypeScript",
+    "live_demo_url": "https://eznotes.onrender.com",
+    "is_hidden": 0,
+    "last_commit_hash": "a1b2c3d4"
   }
+]
+```
+
+### `POST /api/github/sync`
+Syncs all public GitHub repositories for the configured username.
+* **Request**:
+```json
+{
+  "username": "Aruldeshwal"
+}
+```
+* **Response**:
+```json
+{
+  "status": "ok",
+  "username": "Aruldeshwal",
+  "total_synced": 12,
+  "projects": [...]
 }
 ```
 
-### Expected JSON Response
+### `POST /api/projects/{id}/visibility`
+Toggles a project's visibility on compiled resumes.
+* **Response**:
 ```json
 {
-  "model": "qwen2.5:7b-instruct",
-  "created_at": "2026-08-14T12:00:00.123456Z",
-  "response": "- Engineered high-performance key-value database using Go, achieving sub-millisecond latencies.\n- Optimized storage overhead by 30% through targeted binary serialization of memory blocks.",
-  "done": true,
-  "context": [124, 3948, 882],
-  "total_duration": 1420194800,
-  "load_duration": 10029300,
-  "prompt_eval_count": 256,
-  "prompt_eval_duration": 140294000,
-  "eval_count": 82,
-  "eval_duration": 1210400000
+  "status": "ok",
+  "project_id": 1,
+  "is_hidden": 1
 }
 ```
 
----
-
-## 2. Cloud-Based Gemini Developer API (AI Studio)
-
-Maxume uses Google's free **Gemini 2.5 Flash-Lite** endpoint (1,000 requests/day) for heavy-context jobs: OCR on screenshot JDs, project reranking, and company-signal summarization.
-
-*   **Endpoint**: `POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={API_KEY}`
-
-### OCR Request Payload (Multimodal Base64 Image Processing)
+### `DELETE /api/projects/{id}`
+Permanently deletes a project from the SQLite database.
+* **Response**:
 ```json
 {
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "Identify and extract the clean text from this job description screenshot. Output the role title, company name, and the core technical requirements."
-        },
-        {
-          "inlineData": {
-            "mimeType": "image/jpeg",
-            "data": "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP...[Compressed Image Base64]"
-          }
-        }
-      ]
-    }
-  ],
-  "generationConfig": {
-    "temperature": 0.1,
-    "maxOutputTokens": 2048
-  }
+  "status": "ok",
+  "deleted_id": 1
 }
 ```
 
 ---
 
-## 3. High-Speed Groq Cloud API
+## 2. Optimization & Application Endpoints
 
-Maxume routes cover letter, referral, and email generation through **Groq** (`llama-3.3-70b-specdec`, 14,400 free requests/day).
-
-*   **Endpoint**: `POST https://api.groq.com/openai/v1/chat/completions`
-
-### Input Payload Schema
-The system prompt must include the grounding constraint from the company research brief — either the cited signals, or an explicit instruction to avoid company-specific factual claims when `research_status` is `NO_SIGNALS_FOUND`.
-
+### `POST /api/optimize`
+Processes job description text and/or screenshots, reranks top candidate projects, compiles single-page DOCX resume, performs company research, and generates referral outreach drafts.
+* **Request**:
 ```json
 {
-  "model": "llama-3.3-70b-specdec",
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are an expert technical resume coach and career counselor. Generate a persuasive, professional cover letter. You may only reference the company facts listed under RESEARCH_BRIEF below; if RESEARCH_BRIEF is empty, write a strong letter based on the role and candidate background alone and do not invent or imply any company-specific news, launches, or milestones."
-    },
-    {
-      "role": "user",
-      "content": "Create a 300-word cover letter for a Software Engineer role at [COMPANY]. My resume highlights: [INSERT KEY BULLETS].\n\nRESEARCH_BRIEF:\n[INSERT CITED SIGNALS, OR \"NO_SIGNALS_FOUND\"]"
-    }
-  ],
-  "temperature": 0.7,
-  "max_tokens": 1024,
-  "stream": false
+  "company_name": "Google",
+  "role_title": "Software Engineer",
+  "company_url": "https://about.google",
+  "jd_text": "Looking for a full stack engineer with React, Next.js, and MongoDB experience...",
+  "jd_image_base64": "data:image/png;base64,iVBORw0KGgo...",
+  "jd_images_base64": ["data:image/png;base64,...", "..."],
+  "template_path": "Master_Resume.docx",
+  "output_dir": "./output"
 }
 ```
-
----
-
-## 4. Google Custom Search Engine (CSE) — Employee Lookup
-
-To bypass LinkedIn cookie limitations and surface company employees with zero ban risk, Maxume uses Google's Custom Search JSON API.
-
-*   **Endpoint**: `GET https://customsearch.googleapis.com/customsearch/v1`
-
-### Query Parameters Schema
-```
-GET /customsearch/v1?key={API_KEY}&cx={CSE_ID}&q=site:linkedin.com/in/+"Amazon"+AND+("Software+Engineer"+OR+"SDE"+OR+"HR")
-```
-
-### JSON Response Schema
+* **Response**:
 ```json
 {
-  "kind": "customsearch#search",
-  "queries": {
-    "request": [
+  "status": "ok",
+  "application_id": 42,
+  "output_folder": "C:/Users/.../output/google",
+  "resume_path": "C:/Users/.../output/google/google_Resume.docx",
+  "cover_letter_path": "C:/Users/.../output/google/google_CoverLetter.txt",
+  "email_path": "C:/Users/.../output/google/google_Email.txt",
+  "cover_letter": "Dear Hiring Team at Google...",
+  "outreach_email": "Subject: Application for Software Engineer...",
+  "personalization_status": "Personalized",
+  "research_brief": {
+    "status": "FOUND",
+    "signals": [
       {
-        "title": "Google Custom Search - site:linkedin.com/in/ \"Amazon\" AND (\"Software Engineer\")",
-        "totalResults": "184000",
-        "searchTerms": "site:linkedin.com/in/ \"Amazon\" AND (\"Software Engineer\")",
-        "count": 3,
-        "startIndex": 1
+        "signal_type": "product_launch",
+        "headline": "Google launches new AI features for developer ecosystem",
+        "source_url": "https://news.google.com/...",
+        "source_tier": 2,
+        "guard_check_passed": true
       }
     ]
   },
-  "items": [
+  "networking_contacts": [
     {
-      "kind": "customsearch#result",
-      "title": "Jane Doe - Senior Software Engineer - Amazon | LinkedIn",
-      "htmlTitle": "Jane Doe - Senior <b>Software Engineer</b> - <b>Amazon</b> | LinkedIn",
-      "link": "https://www.linkedin.com/in/janedoe",
-      "displayLink": "www.linkedin.com",
-      "snippet": "View Jane Doe's profile on LinkedIn. Senior Software Engineer at Amazon. Technical Expertise in AWS, Distributed Systems, and High-Performance APIs.",
-      "pagemap": {
-        "metatags": [
-          { "profile:first_name": "Jane", "profile:last_name": "Doe" }
-        ]
-      }
+      "id": 101,
+      "employee_name": "Google Senior Engineer / Tech Lead",
+      "employee_tagline": "Senior Software Engineer • Distributed Systems at Google",
+      "profile_url": "https://www.linkedin.com/search/results/people/?keywords=Google%20Software%20Engineer",
+      "referral_message_draft": "Hi Google Senior Engineer / Tech Lead, I came across your work...",
+      "referral_status": "Not Contacted"
     }
-  ]
+  ],
+  "ranked_projects": [...]
 }
 ```
-The Python sidecar extracts the name from `title`, the tagline from `snippet`, and the direct profile link from `link` to render contact cards in the React UI.
 
 ---
 
-## 5. Company Signal Research Contract (New)
+## 3. System & File Utility Endpoints
 
-See `companyresearch.md` for the full pipeline design and hallucination guard. This section defines the concrete schema.
-
-### 5a. Discovery Query (Google CSE, News-Oriented)
-```
-GET /customsearch/v1?key={API_KEY}&cx={CSE_ID}&q="[COMPANY_NAME]"+(news+OR+"product+launch"+OR+funding+OR+"raises")&sort=date&num=5
-```
-
-### 5b. Internal Function Contract — `research_company()`
-Input:
+### `GET /api/ollama/status`
+Checks local Ollama service availability and active model.
+* **Response**:
 ```json
 {
-  "company_name": "Acme Robotics",
-  "company_url": "https://acme.example.com",
-  "recency_days": 90,
-  "max_signals": 5
+  "online": true,
+  "model": "qwen2.5:7b-instruct",
+  "vram": "4.8GB / 5.2GB"
 }
 ```
 
-Output — signal(s) found:
+### `POST /api/open-folder`
+Opens the target application output folder or Word document directly in Windows Explorer.
+* **Request**:
 ```json
 {
-  "status": "FOUND",
-  "signals": [
-    {
-      "signal_type": "product_launch",
-      "headline": "Acme Robotics unveils warehouse-picking arm v3",
-      "source_url": "https://acme.example.com/blog/warehouse-arm-v3",
-      "source_tier": 1,
-      "published_at": "2026-07-02",
-      "guard_check_passed": true
-    }
-  ]
+  "folder_path": "C:/Users/.../output/google"
 }
 ```
-
-Output — nothing qualifying found (the required, non-error fallback state):
+* **Response**:
 ```json
 {
-  "status": "NO_SIGNALS_FOUND",
-  "signals": []
+  "status": "ok",
+  "opened_path": "C:/Users/.../output/google"
 }
-```
-
-### 5c. Gemini Grounded-Summarization Prompt (Stage C)
-```json
-{
-  "contents": [
-    {
-      "parts": [
-        {
-          "text": "You will be given raw search snippets about a company, each with its source URL and date. Summarize ONLY what is stated in these snippets into up to 3 short, factual bullet points, each ending with its source URL in parentheses. Do not add outside knowledge, do not infer unstated facts, and do not resolve ambiguity by guessing. If the snippets do not support any usable, specific claim, respond with exactly: NO_SIGNALS_FOUND\n\nSNIPPETS:\n[INSERT RAW SNIPPETS WITH SOURCE + DATE]"
-        }
-      ]
-    }
-  ],
-  "generationConfig": {
-    "temperature": 0.0,
-    "maxOutputTokens": 512
-  }
-}
-```
-`temperature: 0.0` is intentional here — this is the one call in the whole pipeline where creativity is actively undesirable.
-
-### 5d. Post-Hoc Containment Check (Stage D, Deterministic — Not an API Call)
-Pseudocode, implemented in `company_research.py`:
-```python
-def passes_containment_check(summary_bullet: str, source_snippets: list[str]) -> bool:
-    # Extract key entities/numbers from the bullet (simple noun-phrase / digit extraction)
-    # Confirm each appears verbatim (case-insensitive) in at least one source snippet
-    # Return False on any miss -> caller marks guard_check_passed = False and drops the signal
-    ...
 ```

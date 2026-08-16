@@ -1,55 +1,26 @@
-# Changelog: Maxume
+# Maxume Project Changelog
 
-All notable changes to Maxume are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/); every entry should be traceable to one Conventional Commit (see `gitworkflow.md` §2).
-
-Categories per release: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
+All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
-## [Unreleased]
+## [v1.0.0] - 2026-08-17 (Production Release)
 
 ### Added
-- Tauri v2 + React TypeScript frontend with Legion Red & Black dark mode theme.
-- Python FastAPI backend sidecar with PyInstaller target-triple packaging.
-- SQLite SSOT database schema with tables for projects, applications, networking contacts, and company signals.
-- Incremental Git Watcher with commit-hash signature comparison and markdown live demo URL extraction.
-- Paragraph-Level DOCX style cloning engine (`docx_engine.py`) with OXML clickable hyperlink embedding.
-- Single-page resume compile guardrail (enforcing maximum 4 projects and 4 bullets per project).
-- Dynamic local Ollama model discovery (`GET /api/ollama/models`) with hardware VRAM budget guardrails.
-- Pillow screenshot downscaling and grayscale compression pipeline (`image_optimizer.py`).
-- Gemini 2.5 Flash-Lite multimodal OCR and semantic project selection/reranker (`gemini_service.py`).
-- 5-Stage Company Signal Research pipeline (`company_research.py`) with 3-Stage Hallucination Guard (`containment.py`).
-- Google Custom Search Engine (CSE) LinkedIn Employee Lookup module (`employee_lookup.py`).
-- Groq LPU Creative Generation service (`groq_service.py`) for grounded cover letters, referrals, and emails.
-- Token-Bucket Rate Limiter and asynchronous backoff scheduler (`scheduler.py`).
-- Legion Dark Mode React UI tabs: `Dashboard.tsx`, `ProjectSync.tsx`, `Optimizer.tsx`, and `HistoryLogs.tsx`.
-- Personalization `SignalCard.tsx` with distinct verified and muted informational none-found notice states.
-- Networking `ContactCard.tsx` with referral pitch generator and clipboard copying.
-- Live execution stream logger `TerminalLog.tsx` with phase telemetry and guard indicators.
-- Vitest unit test suite covering `SignalCard`, `QuotaRing`, `TerminalLog`, and `App`.
+- **AI High-Impact Resume Bullet Synthesizer**: Implemented Google's XYZ formula (*Accomplished X as measured by Y, by doing Z*) with architectural power verbs in `github_sync.py`.
+- **Project Visibility Controls**: Added `is_hidden` column in SQLite, Active/Hidden filter tabs, hide/unhide toggles, and repo deletion in `ProjectSync.tsx`.
+- **Direct Clipboard Pasting (`Ctrl+V`)**: Added global keyboard paste listener for multi-screenshot ingestion directly from screenshot tools.
+- **Authentic Skills Synthesizer**: Built `skills_engine.py` to extract only candidate's genuine technologies from verified repositories, eliminating fake tech hallucinations (e.g. Go, Rust).
+- **Real-Time News Wire**: Built Google News RSS integration in `company_research.py` for dated, real-time public company signals and launches.
+- **Targeted LinkedIn Referral Personas**: Added automated LinkedIn persona generation (*Tech Leads*, *Engineering Managers*, *Recruiters*) with tailored 75-word referral outreach drafts in `employee_lookup.py`.
+- **Tab State Persistence**: Re-architected `App.tsx` tab wrappers with CSS visibility to prevent state loss across navigation.
+- **Windows Explorer Output Opener**: Added `POST /api/open-folder` endpoint and UI button to open compiled output folders directly in Windows.
 
----
+### Changed
+- **Single-Page DOCX Calibration**: Calibrated `DocxEngine` with strict paragraph-level line spacing (`Pt`), limiting projects to top 3 and bullets to 2 each to guarantee exact 1-page fit.
+- **Metadata Cleansing**: Added strict bullet filter in `docx_engine.py` and `gemini_service.py` to strip `GitHub:`, `Language:`, and header labels.
+- **SQLite Concurrency & Upsert**: Updated `create_application` with `ON CONFLICT` clause and child cascade cleanup for seamless re-optimization.
 
-## How to Use This File (for implementers and coding agents)
-
-*   Every `feat:` or `fix:` commit adds exactly one bullet here, under the matching category, in the same commit.
-*   Write entries for what a user or downstream developer would care about, not internal refactor detail (`refactor:` and `chore:` commits generally do **not** need a changelog line unless they change observable behavior).
-*   When cutting a release (`gitworkflow.md` §5, Step 4), rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` and open a fresh empty `[Unreleased]` section above it.
-
-### Example of a properly formed future entry:
-```
-## [0.3.0] - 2026-09-01
-
-### Added
-- Company signal research pipeline with hallucination guard (`company_research.py`).
-- Personalization Brief UI card, including the "no recent signal found" state.
-
-### Fixed
-- SQLite schema: corrected `AUTOINCREMENT` keyword and a mismatched CHECK
-  constraint on `networking_contacts.referral_status`.
-
-### Security
-- Company-signal fetcher now respects `robots.txt` and applies an 8s
-  per-source timeout to prevent a slow external site from blocking the
-  pipeline.
-```
+### Removed
+- Removed legacy Google CSE API keys and dead code in favor of native, zero-cost Google News RSS wire and targeted LinkedIn personas.
+- Removed hardcoded dummy text placeholders in `Optimizer.tsx`.

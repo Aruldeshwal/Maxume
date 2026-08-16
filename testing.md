@@ -1,72 +1,47 @@
-# Testing & Quality Assurance Strategy: Maxume
+# Automated Testing Suite & Verification Guide
 
-This document defines what "done" means for each layer of Maxume, and is the doc an agentic coding CLI should consult before marking any `progresstracker.md` checklist item complete.
+## 1. Overview
+Maxume includes a comprehensive two-tier test suite covering backend Python engines and frontend React components.
 
 ---
 
-## 1. Test Pyramid
+## 2. Test Execution Commands
 
+```powershell
+# 1. Run full backend Python pytest suite
+.\sidecar\venv\Scripts\pytest.exe sidecar/tests/
+
+# 2. Run full frontend React vitest suite
+npm run test
+
+# 3. Run all tests concurrently
+.\sidecar\venv\Scripts\pytest.exe sidecar/tests/; npm run test
 ```
-              /\
-             /  \        Manual QA: Milestone gates (progresstracker.md §3)
-            /----\        — full-pipeline runs, visual DOCX inspection
-           /      \
-          / Integr.\     Integration tests: sidecar endpoints, real (rate-limited)
-         /----------\     calls to free-tier APIs in CI, mocked in local dev
-        /            \
-       /   Unit Tests  \  Unit tests: docx_engine, company_research, scheduler,
-      /------------------\ git watcher hash comparison — no network, no GPU
-```
 
 ---
 
-## 2. Unit Test Requirements (Python Sidecar)
+## 3. Backend Test Coverage (37 Tests, 100% Pass)
 
-Location: `sidecar/tests/`. Framework: `pytest`.
-
-*   **`docx_engine.py`**: Given a fixture `.docx` with `{{PROJECTS}}`/`{{SKILLS}}` placeholders, assert the rebuilt document preserves paragraph style properties (indent, line-spacing) and that placeholder text no longer appears post-injection. No live Word/LibreOffice dependency — assert against the parsed XML tree.
-*   **`company_research.py`**:
-    *   Given a set of mock snippets within the recency window, assert `research_company()` returns `status: "FOUND"` with signals carrying correct `source_tier` ordering.
-    *   Given snippets all outside `PERSONALIZATION_RECENCY_DAYS`, assert `status: "NO_SIGNALS_FOUND"`.
-    *   Given a mock Gemini response containing a fact not present in any source snippet, assert `passes_containment_check()` returns `False` for that bullet and it is excluded from the final brief.
-    *   Assert the function never raises for "nothing found" — only for genuine transport-level errors (e.g. malformed API key), which should surface as a distinct, catchable exception type, not a silent `NO_SIGNALS_FOUND`.
-*   **`scheduler.py`**: Assert `APIRateLimiter.consume()` sleeps approximately the expected duration when tokens are exhausted (use a fake clock, not real `time.sleep`, to keep tests fast); assert `TokenAwareScheduler.execute_task()` retries on a simulated `429` and gives up after `max_retries`.
-*   **Git watcher**: Assert commit-hash comparison correctly identifies "unchanged" vs "modified" against a temp Git repo fixture, without touching the user's real `/projects` folder.
-
----
-
-## 3. Integration Test Requirements
-
-Location: `sidecar/tests/integration/`, gated behind an environment flag (`RUN_INTEGRATION=1`) so they don't run by default in fast local loops.
-
-*   **Ollama round-trip**: Requires a running local Ollama instance; asserts a real `/api/generate` call against `qwen2.5:7b-instruct` returns a non-empty `response` field within a timeout.
-*   **Gemini / Groq / Google CSE round-trip**: Uses real free-tier keys from a dedicated test account (never the developer's personal keys); runs against a small, fixed set of inputs to avoid burning quota. Skipped automatically if the relevant `*_API_KEY` env var is absent.
-*   **Company research end-to-end**: One test targeting a company known to have stable, old public news (to avoid recency-window flakiness) and one targeting a fictitious/nonexistent company name, asserting the latter reliably produces `NO_SIGNALS_FOUND` rather than an error.
+| Test Module | Coverage & Invariants Verified |
+| :--- | :--- |
+| `test_docx_engine.py` | Word OXML hyperlink injection, strict 3-project / 2-bullet single-page guardrail, and metadata filtering (`GitHub:`, `Language:`). |
+| `test_skills_engine.py` | Authentic candidate skills synthesis from verified repositories with zero fake tech hallucinations. |
+| `test_company_research.py` | Multi-source real-time news wire, source tiering (1/2/3), recency filters, and 3-stage hallucination containment guard. |
+| `test_github_sync.py` | Public GitHub profile sync, live demo link extraction, and XYZ formula bullet parsing. |
+| `test_api_endpoints.py` | FastAPI REST endpoints, request schemas, project visibility toggles, and folder openers. |
+| `test_scheduler.py` | Token-bucket rate limiter, token refill rates, and exponential backoff retry on HTTP 429. |
+| `test_database.py` | SQLite schema migrations, foreign keys, thread-safe connections, and `ON CONFLICT` upserts. |
+| `test_image_optimizer.py` | Pillow grayscale image conversion, dimension resizing, and sub-300KB compression. |
+| `test_ollama_manager.py` | Local Ollama discovery, model switching, and dynamic VRAM threshold checks. |
+| `test_cloud_services.py` | Gemini Multimodal OCR and Groq creative generation cascades with local fallbacks. |
 
 ---
 
-## 4. Frontend Testing
+## 4. Frontend Component Test Coverage (7 Tests, 100% Pass)
 
-*   **Component tests** (Vitest + React Testing Library): `SignalCard.tsx` renders correctly for both the "signals found" and "none found" states; `QuotaRing.tsx` renders correct fill percentage from mock quota data; `TerminalLog.tsx` correctly appends streamed SSE lines in order.
-*   **No end-to-end browser automation is required for v1** — Tauri's webview + sidecar IPC surface is small enough that component tests plus the manual milestone gates below give adequate coverage without the maintenance cost of a full E2E suite.
-
----
-
-## 5. Manual QA Gates
-
-These map directly to the milestones in `progresstracker.md` §3 and must be run before any `main` release tag:
-
-1.  **Docx Compilation Quality Gate** — visual inspection in MS Word and Google Docs.
-2.  **Offline Failover Validation** — full pipeline with network disabled.
-3.  **Zero-Cost Sandbox Verification** — 150-run batch, verify $0.00 spend across all provider dashboards.
-4.  **Personalization Integrity Gate** — audit `company_research_signals` for source traceability and guard-check accuracy, per `progresstracker.md` Milestone 4.
-
----
-
-## 6. Definition of Done (Per Checklist Item)
-
-A `progresstracker.md` item is not complete until:
-1.  The corresponding code is committed per `gitworkflow.md`'s micro-commit rule.
-2.  At least one unit test exists and passes for new logic.
-3.  `changelog.md` has a matching entry (if the change is user-observable).
-4.  Any new failure mode discovered while building it is logged in `difficulties.md`, and any nontrivial choice made is logged in `decisions.md`.
+| Test File | Component Verified |
+| :--- | :--- |
+| `src/components/QuotaRing.test.tsx` | SVG radial progress ring, percentage calculations, and quota telemetry. |
+| `src/components/TerminalLog.test.tsx` | Streaming execution logs, auto-scrolling, and step indicators. |
+| `src/components/SignalCard.test.tsx` | Grounded signal badges, tier chips, and external citation links. |
+| `src/App.test.tsx` | Main application shell, persistent tab routing, and live status bar. |
