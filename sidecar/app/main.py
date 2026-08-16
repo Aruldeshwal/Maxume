@@ -26,6 +26,7 @@ from app.gemini_service import gemini_service
 from app.groq_service import groq_service
 from app.image_optimizer import compress_jd_screenshot
 from app.github_sync import sync_github_profile_repositories
+from app.skills_engine import extract_authentic_candidate_skills
 
 app = FastAPI(
     title="Maxume Python Sidecar",
@@ -390,11 +391,15 @@ async def optimize_application(payload: OptimizeApplicationRequest):
 
     compiled_resume_path = os.path.join(app_output_dir, f"{company_slug}_Resume.docx")
     try:
+        authentic_skills = extract_authentic_candidate_skills(
+            projects=all_projects,
+            jd_text=jd_text
+        )
         DocxEngine.rebuild_resume(
             template_path=template_path,
             output_path=compiled_resume_path,
             projects=ranked_projects,
-            skills={"Technical Skills": ["Python", "TypeScript", "Go", "Docker", "FastAPI", "React"]}
+            skills=authentic_skills
         )
     except Exception as docx_err:
         logger.error(f"DocxEngine rebuild failed: {docx_err}", exc_info=True)
