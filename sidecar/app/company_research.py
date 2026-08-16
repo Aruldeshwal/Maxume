@@ -4,6 +4,8 @@ import os
 import re
 import time
 import urllib.robotparser
+import urllib.parse
+import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional, Tuple
@@ -49,7 +51,6 @@ def is_url_allowed_by_robots(url: str, user_agent: str = USER_AGENT, timeout: fl
         rp.read()
         return rp.can_fetch(user_agent, url)
     except Exception:
-        # If robots.txt cannot be fetched or parsed, default to permissive for public sites
         return True
 
 def fetch_page_content_clean(url: str, timeout: float = 8.0) -> Optional[str]:
@@ -91,25 +92,25 @@ def classify_source_tier(url: str, company_domain: Optional[str] = None) -> int:
         return 3
     if any(p in domain for p in [
         "techcrunch.com", "bloomberg.com", "reuters.com", "venturebeat.com",
-        "wired.com", "theverge.com", "forbes.com",
+        "wired.com", "theverge.com", "forbes.com", "cnbc.com",
         "inc42.com", "yourstory.com", "entrackr.com", "economictimes.indiatimes.com",
         "livemint.com", "vccircle.com", "business-standard.com"
     ]):
         return 2
     
-    # Generic news / press
     return 2
 
 def is_within_recency(date_str: Optional[str], recency_days: int = DEFAULT_RECENCY_DAYS) -> bool:
     """Determine if a published date string is within the recency window."""
     if not date_str:
-        # If no explicit date is returned, treat as tentatively eligible for snippet inspection
         return True
 
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=recency_days)
 
     date_formats = [
+        "%a, %d %b %Y %H:%M:%S %Z",
+        "%a, %d %b %Y %H:%M:%S %z",
         "%Y-%m-%dT%H:%M:%SZ",
         "%Y-%m-%dT%H:%M:%S%z",
         "%Y-%m-%d",
@@ -120,8 +121,7 @@ def is_within_recency(date_str: Optional[str], recency_days: int = DEFAULT_RECEN
 
     for fmt in date_formats:
         try:
-            # Handle potential slice
-            clean_date = date_str.split(".")[0]
+            clean_date = date_str.split(".")[0].strip()
             dt = datetime.strptime(clean_date, fmt)
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=timezone.utc)
@@ -161,12 +161,11 @@ def research_company(
     raw_candidates: List[Dict[str, Any]] = []
 
     if mock_snippets is not None:
-        # Use provided test mock snippets
         for item in mock_snippets:
             if is_within_recency(item.get("published_at"), recency_days):
                 raw_candidates.append(item)
     else:
-        # Real Google CSE Execution
+        # 1. Try Google CSE if configured
         cse_key = google_cse_key or os.environ.get("GOOGLE_CSE_KEY")
         cse_cx = google_cse_cx or os.environ.get("GOOGLE_CSE_CX")
         
@@ -178,7 +177,6 @@ def research_company(
                     "key": cse_key,
                     "cx": cse_cx,
                     "q": query,
-                    "sort": "date",
                     "num": min(5, max_signals)
                 }
                 res = requests.get(url, params=params, timeout=6.0)
@@ -199,12 +197,35 @@ def research_company(
             except Exception:
                 pass
 
-        # Supplement with direct company domain fetch if known
+        # 2. Resilient Fallback: Google News RSS Search (Zero-Config, Real-Time Dated Articles)
+        if len(raw_candidates) == 0:
+            try:
+                rss_q = urllib.parse.quote(f"{clean_company} launch OR funding OR news OR AI")
+                rss_url = f"https://news.google.com/rss/search?q={rss_q}&hl=en-US&gl=US&ceid=US:en"
+                rss_res = requests.get(rss_url, headers={"User-Agent": USER_AGENT}, timeout=6.0)
+                if rss_res.status_code == 200:
+                    root = ET.fromstring(rss_res.content)
+                    for item in root.findall(".//item")[:max_signals * 2]:
+                        t = item.find("title").text if item.find("title") is not None else ""
+                        l = item.find("link").text if item.find("link") is not None else ""
+                        d = item.find("pubDate").text if item.find("pubDate") is not None else None
+                        if t and l:
+                            raw_candidates.append({
+                                "title": t,
+                                "snippet": t,
+                                "source_url": l,
+                                "published_at": d,
+                                "source_tier": classify_source_tier(l, company_domain)
+                            })
+            except Exception:
+                pass
+
+        # 3. Supplement with direct company domain fetch if known
         if company_url:
             page_text = fetch_page_content_clean(company_url, timeout=8.0)
             if page_text:
                 raw_candidates.append({
-                    "title": f"{clean_company} Official News",
+                    "title": f"{clean_company} Official Announcement",
                     "snippet": page_text[:800],
                     "source_url": company_url,
                     "published_at": None,
@@ -219,7 +240,6 @@ def research_company(
     qualifying_candidates.sort(key=lambda x: x.get("source_tier", 2))
     bounded_candidates = qualifying_candidates[:max_signals]
 
-    # Stage D check: If 0 qualifying snippets -> NO_SIGNALS_FOUND immediately
     if not bounded_candidates:
         return ResearchBrief(
             status="NO_SIGNALS_FOUND",
@@ -228,70 +248,61 @@ def research_company(
             target_url=company_url
         )
 
-    # --- Stage C: Grounded Summarization ---
+    # --- Stage C: Grounded Summarization with Multi-LLM & Fallback ---
     formatted_snippets_text = "\n\n".join(
         f"Snippet {i+1} [URL: {c['source_url']}] [Tier: {c.get('source_tier', 2)}]: {c.get('snippet', '')}"
         for i, c in enumerate(bounded_candidates)
     )
 
-    gemini_key = gemini_api_key or os.environ.get("GEMINI_API_KEY")
     summary_text = None
 
     if mock_gemini_response is not None:
         summary_text = mock_gemini_response
-    elif gemini_key:
-        try:
-            for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
-                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
-                prompt_content = (
-                    "You will be given raw search snippets about a company, each with its source URL and date. "
-                    "Summarize ONLY what is stated in these snippets into up to 3 short, factual bullet points, each ending with its source URL in parentheses. "
-                    "Do not add outside knowledge, do not infer unstated facts, and do not resolve ambiguity by guessing. "
-                    "If the snippets do not support any usable, specific claim, respond with exactly: NO_SIGNALS_FOUND\n\n"
-                    f"SNIPPETS:\n{formatted_snippets_text}"
-                )
-                payload = {
-                    "contents": [{"parts": [{"text": prompt_content}]}],
-                    "generationConfig": {
-                        "temperature": 0.0,
-                        "maxOutputTokens": 512
-                    }
+    else:
+        # Try Groq first if available for high-speed grounded summarization
+        groq_key = os.environ.get("GROQ_API_KEY")
+        if groq_key:
+            try:
+                g_url = "https://api.groq.com/openai/v1/chat/completions"
+                g_headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
+                g_payload = {
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "Summarize ONLY what is stated in the snippets into up to 3 short, factual bullet points, each ending with its source URL in parentheses. "
+                                "Do not invent facts. If nothing usable, say NO_SIGNALS_FOUND."
+                            )
+                        },
+                        {"role": "user", "content": f"SNIPPETS:\n{formatted_snippets_text}"}
+                    ],
+                    "temperature": 0.0,
+                    "max_tokens": 512
                 }
-                res = requests.post(gemini_url, json=payload, timeout=8.0)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        summary_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        break
-                elif res.status_code == 404:
-                    continue
-        except Exception:
-            pass
+                g_res = requests.post(g_url, headers=g_headers, json=g_payload, timeout=6.0)
+                if g_res.status_code == 200:
+                    summary_text = g_res.json()["choices"][0]["message"]["content"].strip()
+            except Exception:
+                pass
 
-    # Fallback to snippet titles if Gemini is unreachable or returns NO_SIGNALS_FOUND
-    if not summary_text or "NO_SIGNALS_FOUND" in summary_text.strip():
-        # Fallback to highest tier candidate snippet title directly
-        if summary_text and "NO_SIGNALS_FOUND" in summary_text.strip():
-            return ResearchBrief(
-                status="NO_SIGNALS_FOUND",
-                signals=[],
-                company_name=clean_company,
-                target_url=company_url
+        # Fallback to candidate snippet headlines if LLM call was unavailable
+        if not summary_text or "NO_SIGNALS_FOUND" in summary_text.strip():
+            # Build summary directly from verified candidate headlines
+            summary_text = "\n".join(
+                f"- {c['title']} ({c['source_url']})" for c in bounded_candidates
             )
 
     # --- Stage D: Hallucination Guard Verification ---
     source_texts = [c.get("snippet", "") for c in bounded_candidates]
     verified_signals: List[SignalItem] = []
 
-    # Parse bullet lines
     lines = [line.strip() for line in (summary_text or "").splitlines() if line.strip() and not line.strip().startswith("#")]
     for line in lines:
         clean_line = line.lstrip("•*- 1234567890.)")
         if not clean_line or len(clean_line) < 10:
             continue
 
-        # Extract source URL from parentheses if present, or match to candidate
         url_match = re.search(r'\((https?://[^\s\)]+)\)', clean_line)
         source_url = url_match.group(1) if url_match else bounded_candidates[0]["source_url"]
         headline = re.sub(r'\(https?://[^\s\)]+\)', '', clean_line).strip()
@@ -302,9 +313,9 @@ def research_company(
             tier = classify_source_tier(source_url, company_domain)
             signal_type = "news"
             lower_h = headline.lower()
-            if "launch" in lower_h or "unveil" in lower_h or "release" in lower_h:
+            if "launch" in lower_h or "unveil" in lower_h or "release" in lower_h or "introduce" in lower_h:
                 signal_type = "product_launch"
-            elif "fund" in lower_h or "raise" in lower_h or "series" in lower_h:
+            elif "fund" in lower_h or "raise" in lower_h or "series" in lower_h or "invest" in lower_h:
                 signal_type = "funding"
             elif "blog" in source_url.lower() or "eng" in source_url.lower():
                 signal_type = "engineering_blog"
@@ -327,7 +338,7 @@ def research_company(
 
     return ResearchBrief(
         status="FOUND",
-        signals=verified_signals[:3],
+        signals=verified_signals[:max_signals],
         company_name=clean_company,
         target_url=company_url
     )
