@@ -140,6 +140,23 @@ async def sync_projects(payload: Optional[ProjectSyncRequest] = None):
     results = watcher.scan_project_folder(target_dir)
     return {"status": "ok", "scanned_directory": target_dir, "results": results}
 
+class GitHubProfileSyncRequest(BaseModel):
+    username: str
+    token: Optional[str] = None
+
+@app.post("/api/projects/github-sync")
+async def sync_github_profile(payload: GitHubProfileSyncRequest):
+    """Fetches public repositories from GitHub profile, extracts README docs & live URLs, and saves to SSOT."""
+    try:
+        results = sync_github_profile_repositories(
+            username=payload.username,
+            token=payload.token,
+            database=db
+        )
+        return {"status": "ok", "username": payload.username, "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # Applications History Logs
 @app.get("/api/applications")
 async def get_applications():

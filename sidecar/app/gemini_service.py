@@ -138,16 +138,25 @@ class GeminiService:
                     ranked = json.loads(clean_json_str)
                     return ranked[:top_k]
                 except Exception:
-                    # Fallback to prefiltered list
-                    return [
-                        {
+                    # Fallback to prefiltered list with bullets parsed from summary_markdown
+                    fallback_list = []
+                    for i, p in enumerate(prefiltered[:top_k]):
+                        summary_txt = p.get("summary_markdown", "")
+                        extracted_bullets = [
+                            line.lstrip("-*• ").strip()
+                            for line in summary_txt.splitlines()
+                            if line.strip().startswith(("-", "*", "•")) and len(line.strip()) > 15
+                        ]
+                        if not extracted_bullets:
+                            extracted_bullets = ["Engineered high performance component.", "Optimized storage and API latency."]
+
+                        fallback_list.append({
                             "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
                             "tech_stack": p.get("tech_stack", "General Engineering"),
                             "live_demo_url": p.get("live_demo_url"),
-                            "bullets": ["Engineered high performance component.", "Optimized storage and API latency."]
-                        }
-                        for i, p in enumerate(prefiltered[:top_k])
-                    ]
+                            "bullets": extracted_bullets[:4]
+                        })
+                    return fallback_list
             elif res.status_code == 429:
                 raise RuntimeError(f"Gemini 429: {res.text}")
             else:
