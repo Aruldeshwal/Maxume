@@ -5,7 +5,7 @@ import json
 import re
 import logging
 import requests
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 from dotenv import load_dotenv
 from app.scheduler import scheduler
 from app.image_optimizer import compress_jd_screenshot
