@@ -155,7 +155,6 @@ class Database:
             conn.commit()
             return row["id"] if row else -1
 
-    # --- Job Application Logs ---
     def create_application(
         self,
         company_name: str,
@@ -171,16 +170,31 @@ class Database:
                 """
                 INSERT INTO applications (
                     company_name, role_title, status, jd_raw_text,
-                    compressed_image_path, output_folder_path, personalization_status
+                    compressed_image_path, output_folder_path, personalization_status, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(output_folder_path) DO UPDATE SET
+                    company_name = excluded.company_name,
+                    role_title = excluded.role_title,
+                    status = excluded.status,
+                    jd_raw_text = excluded.jd_raw_text,
+                    compressed_image_path = excluded.compressed_image_path,
+                    personalization_status = excluded.personalization_status,
+                    updated_at = CURRENT_TIMESTAMP
                 RETURNING id;
                 """,
                 (company_name, role_title, status, jd_raw_text, compressed_image_path, output_folder_path, personalization_status),
             )
             row = cursor.fetchone()
             conn.commit()
-            return row["id"]
+            return row["id"] if row else -1
+
+    def clear_application_children(self, application_id: int) -> None:
+        """Cleans previous signals and contacts when an existing application is re-optimized."""
+        with self.get_connection() as conn:
+            conn.execute("DELETE FROM networking_contacts WHERE application_id = ?", (application_id,))
+            conn.execute("DELETE FROM company_research_signals WHERE application_id = ?", (application_id,))
+            conn.commit()
 
     def get_application(self, app_id: int) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:

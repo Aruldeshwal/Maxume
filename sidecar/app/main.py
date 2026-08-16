@@ -434,6 +434,8 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         output_folder_path=app_output_dir,
         personalization_status=personalization_status
     )
+    if app_id and app_id > 0:
+        db.clear_application_children(app_id)
 
     # Persist signals
     if research_brief and research_brief.signals:
