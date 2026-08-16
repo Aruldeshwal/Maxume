@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FolderSync, CheckCircle2, RefreshCw, GitBranch, ExternalLink, FileText, AlertCircle } from "lucide-react";
+import { FolderSync, CheckCircle2, RefreshCw, GitBranch, ExternalLink, FileText, AlertCircle, FolderOpen } from "lucide-react";
 
 interface ProjectItem {
   id?: number;
@@ -13,12 +13,26 @@ interface ProjectItem {
 }
 
 export const ProjectSync: React.FC = () => {
-  const [projectsDir, setProjectsDir] = useState<string>("./projects");
+  const [projectsDir, setProjectsDir] = useState<string>("");
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncResult, setLastSyncResult] = useState<string | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchConfigAndProjects = async () => {
+    try {
+      // 1. Load initial config from backend
+      const cfgRes = await fetch("http://127.0.0.1:8000/api/config");
+      if (cfgRes.ok) {
+        const cfg = await cfgRes.json();
+        const saved = localStorage.getItem("maxume_projects_dir");
+        setProjectsDir(saved || cfg.projects_dir || "./projects");
+      }
+    } catch {
+      const saved = localStorage.getItem("maxume_projects_dir");
+      setProjectsDir(saved || "./projects");
+    }
+
+    // 2. Fetch projects
     try {
       const res = await fetch("http://127.0.0.1:8000/api/projects");
       if (res.ok) {
@@ -31,27 +45,40 @@ export const ProjectSync: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchProjects();
+    fetchConfigAndProjects();
   }, []);
 
-  const handleSyncNow = async () => {
+  const handleSyncNow = async (dirToSync?: string) => {
+    const target = dirToSync || projectsDir;
+    if (!target) return;
+
     setIsSyncing(true);
     setLastSyncResult(null);
+    localStorage.setItem("maxume_projects_dir", target);
+
     try {
       const res = await fetch("http://127.0.0.1:8000/api/projects/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projects_dir: projectsDir })
+        body: JSON.stringify({ projects_dir: target })
       });
       if (res.ok) {
         const data = await res.json();
-        setLastSyncResult(`Sync complete! Scanned ${data.results?.length || 0} subdirectories.`);
-        await fetchProjects();
+        const count = data.results?.length || 0;
+        setLastSyncResult(`Sync complete! Scanned directory: "${data.scanned_directory}" (Found ${count} projects)`);
+        
+        // Refresh project list
+        const projRes = await fetch("http://127.0.0.1:8000/api/projects");
+        if (projRes.ok) {
+          const pdata = await projRes.json();
+          setProjects(pdata.projects || []);
+        }
       } else {
-        setLastSyncResult("Sync failed. Check directory path.");
+        const errData = await res.json().catch(() => ({}));
+        setLastSyncResult(`Sync failed: ${errData.detail || "Check directory path."}`);
       }
     } catch (err: any) {
-      setLastSyncResult(`Error: ${err.message || "Could not reach sidecar."}`);
+      setLastSyncResult(`Error: ${err.message || "Could not reach sidecar. Ensure python server is running."}`);
     } finally {
       setIsSyncing(false);
     }
@@ -67,26 +94,29 @@ export const ProjectSync: React.FC = () => {
             <span>Projects SSOT Synchronizer</span>
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Scans engineering project logs, extracts live deployment URLs, and detects incremental Git commits.
+            Scans local project folders on your computer, detects Git commit hashes, and extracts live deployment URLs.
           </p>
         </div>
 
         <button
-          onClick={handleSyncNow}
+          onClick={() => handleSyncNow()}
           disabled={isSyncing}
           className="px-4 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(225,29,72,0.4)] transition-all flex items-center space-x-2 disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-          <span>{isSyncing ? "Scanning /projects..." : "Force Sync SSOT"}</span>
+          <span>{isSyncing ? "Scanning folder..." : "Force Sync SSOT"}</span>
         </button>
       </div>
 
       {/* Directory Binding Bar */}
       <div className="p-4 rounded-lg bg-background-card border border-border-subtle space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-            Workspace Mapping
-          </span>
+          <div className="flex items-center space-x-2">
+            <FolderOpen className="w-4 h-4 text-legion-crimson" />
+            <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+              Local Projects Folder Path
+            </span>
+          </div>
           <div className="flex items-center space-x-1.5 text-xs text-emerald-400 font-mono">
             <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
             <span>Git Tracking Active</span>
@@ -99,19 +129,24 @@ export const ProjectSync: React.FC = () => {
             value={projectsDir}
             onChange={(e) => setProjectsDir(e.target.value)}
             className="flex-1 bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-text-primary focus:outline-none focus:border-legion-crimson"
-            placeholder="C:/Users/Legion/Documents/projects"
+            placeholder="C:/Users/yourname/Documents/Projects"
           />
           <button
-            onClick={handleSyncNow}
-            className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-text-primary transition-all border border-border-subtle"
+            onClick={() => handleSyncNow(projectsDir)}
+            disabled={isSyncing}
+            className="px-3 py-2 rounded bg-zinc-800 hover:bg-zinc-700 text-xs font-mono text-text-primary transition-all border border-border-subtle disabled:opacity-50"
           >
-            Update Path
+            Update &amp; Sync
           </button>
         </div>
 
         {lastSyncResult && (
-          <div className="text-xs font-mono text-emerald-400 flex items-center space-x-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <div className={`text-xs font-mono flex items-center space-x-1.5 p-2 rounded ${
+            lastSyncResult.includes("Error") || lastSyncResult.includes("failed") 
+              ? "bg-rose-950/40 text-rose-300 border border-rose-800/40" 
+              : "bg-emerald-950/40 text-emerald-300 border border-emerald-800/40"
+          }`}>
+            <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
             <span>{lastSyncResult}</span>
           </div>
         )}
@@ -132,8 +167,8 @@ export const ProjectSync: React.FC = () => {
           <div className="p-8 text-center space-y-2">
             <AlertCircle className="w-8 h-8 text-text-muted mx-auto opacity-50" />
             <div className="text-xs text-text-secondary">No project folders synchronized yet.</div>
-            <div className="text-[11px] text-text-muted">
-              Click &quot;Force Sync SSOT&quot; above to scan your /projects directory.
+            <div className="text-[11px] text-text-muted max-w-md mx-auto">
+              Enter your local projects directory path above (or the path set in your <code>.env</code>) and click <strong>Force Sync SSOT</strong>.
             </div>
           </div>
         ) : (
@@ -175,7 +210,7 @@ export const ProjectSync: React.FC = () => {
                     </td>
                     <td className="px-4 py-3">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/40">
-                        Up to Date
+                        Synchronized
                       </span>
                     </td>
                     <td className="px-4 py-3 text-text-secondary text-[11px]">

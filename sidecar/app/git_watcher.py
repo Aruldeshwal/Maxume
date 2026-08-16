@@ -105,7 +105,13 @@ class GitWatcher:
                 continue
 
             rel_path = entry
-            current_commit = get_directory_commit_hash(projects_root, rel_path) if is_git else None
+            # Check if this subfolder is its own separate Git repo
+            if is_git_repository(full_path):
+                current_commit = get_directory_commit_hash(full_path, ".")
+            elif is_git:
+                current_commit = get_directory_commit_hash(projects_root, rel_path)
+            else:
+                current_commit = None
             
             # Check DB record
             normalized_path = os.path.abspath(full_path).replace("\\", "/")

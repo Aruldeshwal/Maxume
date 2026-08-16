@@ -93,6 +93,15 @@ async def health_check():
         "database": os.path.exists(db.db_path)
     }
 
+@app.get("/api/config")
+async def get_config():
+    """Returns configured paths and environment defaults."""
+    return {
+        "projects_dir": os.environ.get("PROJECTS_DIR_PATH", "./projects"),
+        "output_dir": os.environ.get("OUTPUT_DIR_PATH", "./output"),
+        "master_resume_path": os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
+    }
+
 # Projects & SSOT
 @app.get("/api/projects")
 async def get_projects():
@@ -111,10 +120,22 @@ async def upsert_project(payload: ProjectUpsertRequest):
     )
     return {"status": "ok", "project_id": project_id}
 
+class ProjectSyncRequest(BaseModel):
+    projects_dir: Optional[str] = None
+
 @app.post("/api/projects/sync")
-async def sync_projects(projects_dir: Optional[str] = None):
+async def sync_projects(payload: Optional[ProjectSyncRequest] = None):
     """Triggers Incremental Git Watcher sync across projects folder."""
-    target_dir = projects_dir or os.environ.get("PROJECTS_DIR_PATH", "./projects")
+    target_dir = None
+    if payload and payload.projects_dir and payload.projects_dir.strip():
+        target_dir = payload.projects_dir.strip()
+    else:
+        target_dir = os.environ.get("PROJECTS_DIR_PATH", "./projects")
+
+    # Clean up quotes if user pasted path with quotes e.g. "C:\Path"
+    target_dir = target_dir.strip("\"'")
+    target_dir = os.path.expanduser(target_dir)
+
     watcher = GitWatcher(database=db)
     results = watcher.scan_project_folder(target_dir)
     return {"status": "ok", "scanned_directory": target_dir, "results": results}
