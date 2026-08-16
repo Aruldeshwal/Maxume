@@ -4,7 +4,7 @@ import os
 import json
 import re
 import requests
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 from dotenv import load_dotenv
 from app.scheduler import scheduler
 from app.image_optimizer import compress_jd_screenshot
@@ -21,22 +21,48 @@ class GeminiService:
         key = self.api_key or os.environ.get("GEMINI_API_KEY", "")
         return f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
 
-    async def ocr_screenshot_jd(self, image_path: str, mock_response: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def ocr_screenshot_jd(
+        self,
+        image_paths: Union[str, List[str]],
+        mock_response: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
-        Extracts clean text, company name, role title, and tech requirements from JD screenshot.
-        Compresses image with Pillow first per ADR 1.
+        Extracts clean text, company name, role title, and tech requirements from one or multiple JD screenshots.
+        Compresses images with Pillow first per ADR 1.
         """
         if mock_response is not None:
             return mock_response
 
-        # Compress screenshot locally
-        _, b64_img, _ = compress_jd_screenshot(image_path)
+        # Normalize to list
+        if isinstance(image_paths, str):
+            paths_list = [image_paths]
+        else:
+            paths_list = image_paths
+
+        if not paths_list:
+            return {"company_name": "", "role_title": "", "raw_text": "", "key_skills": []}
+
+        # Compress all screenshots locally
+        image_parts = []
+        for p in paths_list:
+            if os.path.exists(p):
+                _, b64_img, _ = compress_jd_screenshot(p)
+                image_parts.append({
+                    "inlineData": {
+                        "mimeType": "image/jpeg",
+                        "data": b64_img
+                    }
+                })
+
+        if not image_parts:
+            return {"company_name": "", "role_title": "", "raw_text": "", "key_skills": []}
 
         async def call_ocr():
             url = self._get_api_url()
             prompt = (
-                "Identify and extract the clean text from this job description screenshot. "
-                "Output a valid JSON object with the following fields: 'company_name', 'role_title', 'raw_text', and 'key_skills' (array of strings). "
+                "You are given one or more sequential screenshots of a job description. "
+                "Carefully transcribe and extract all textual information across all provided images in chronological order. "
+                "Output a valid JSON object with the following fields: 'company_name', 'role_title', 'raw_text' (complete unified job description), and 'key_skills' (array of strings). "
                 "Output ONLY the JSON object, nothing else."
             )
             payload = {
@@ -44,25 +70,19 @@ class GeminiService:
                     {
                         "parts": [
                             {"text": prompt},
-                            {
-                                "inlineData": {
-                                    "mimeType": "image/jpeg",
-                                    "data": b64_img
-                                }
-                            }
+                            *image_parts
                         ]
                     }
                 ],
                 "generationConfig": {
                     "temperature": 0.1,
-                    "maxOutputTokens": 2048
+                    "maxOutputTokens": 3000
                 }
             }
-            res = requests.post(url, json=payload, timeout=12.0)
+            res = requests.post(url, json=payload, timeout=15.0)
             if res.status_code == 200:
                 data = res.json()
                 text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                # Clean code blocks
                 clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
                 try:
                     return json.loads(clean_json_str)
@@ -97,7 +117,6 @@ class GeminiService:
         if not candidate_projects:
             return []
 
-        # Local pre-filter to top 8 if more exist
         prefiltered = candidate_projects[:8]
 
         async def call_rerank():
@@ -138,7 +157,6 @@ class GeminiService:
                     ranked = json.loads(clean_json_str)
                     return ranked[:top_k]
                 except Exception:
-                    # Fallback to prefiltered list with bullets parsed from summary_markdown
                     fallback_list = []
                     for i, p in enumerate(prefiltered[:top_k]):
                         summary_txt = p.get("summary_markdown", "")

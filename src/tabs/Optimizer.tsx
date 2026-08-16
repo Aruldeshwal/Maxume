@@ -8,14 +8,16 @@ import {
   Sliders, 
   AlertTriangle,
   UserCheck,
-  X
+  X,
+  Plus,
+  ClipboardPaste
 } from "lucide-react";
 import TerminalLog, { LogLine } from "../components/TerminalLog";
 import SignalCard from "../components/SignalCard";
 import ContactCard, { ContactData } from "../components/ContactCard";
 
 interface UploadedImage {
-  file: File;
+  id: string;
   name: string;
   sizeKb: number;
   base64: string;
@@ -29,9 +31,10 @@ export const Optimizer: React.FC = () => {
   const [companyUrl, setCompanyUrl] = useState<string>("");
   const [jdText, setJdText] = useState<string>("");
 
-  // Screenshot Upload State
-  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  // Multiple Screenshots State
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Settings & Guardrails
@@ -62,29 +65,65 @@ export const Optimizer: React.FC = () => {
       .catch(() => {});
   }, [selectedModel]);
 
-  const processFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      alert("Please upload a valid image file (.png, .jpg, .jpeg, .webp)");
-      return;
-    }
+  // Global Clipboard Paste Listener (Ctrl+V / Command+V)
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      setUploadedImage({
-        file,
-        name: file.name,
-        sizeKb: Math.round(file.size / 1024),
-        base64,
-        previewUrl: URL.createObjectURL(file),
-      });
+      let foundImage = false;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            foundImage = true;
+            processFiles([file], "Pasted from clipboard");
+          }
+        }
+      }
+
+      if (foundImage) {
+        setPasteNotice("Screenshot pasted from clipboard!");
+        setTimeout(() => setPasteNotice(null), 3000);
+      }
     };
-    reader.readAsDataURL(file);
+
+    window.addEventListener("paste", handleGlobalPaste);
+    return () => window.removeEventListener("paste", handleGlobalPaste);
+  }, []);
+
+  const processFiles = (files: File[] | FileList, labelPrefix = "Screenshot") => {
+    const newItems: Promise<UploadedImage>[] = [];
+
+    Array.from(files).forEach((file, index) => {
+      if (!file.type.startsWith("image/")) return;
+
+      const p = new Promise<UploadedImage>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const base64 = e.target?.result as string;
+          resolve({
+            id: Math.random().toString(36).substring(2, 9),
+            name: file.name && file.name !== "image.png" ? file.name : `${labelPrefix} #${uploadedImages.length + index + 1}`,
+            sizeKb: Math.round(file.size / 1024),
+            base64,
+            previewUrl: URL.createObjectURL(file),
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+
+      newItems.push(p);
+    });
+
+    Promise.all(newItems).then((processed) => {
+      setUploadedImages((prev) => [...prev, ...processed]);
+    });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
     }
   };
 
@@ -101,14 +140,20 @@ export const Optimizer: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
     }
   };
 
-  const removeUploadedImage = (e: React.MouseEvent) => {
+  const removeUploadedImage = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setUploadedImage(null);
+    setUploadedImages((prev) => prev.filter((img) => img.id !== id));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const clearAllImages = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUploadedImages([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -128,8 +173,8 @@ export const Optimizer: React.FC = () => {
   };
 
   const handleRunOptimizer = async () => {
-    if (!jdText.trim() && !uploadedImage) {
-      alert("Please paste a job description or upload a JD screenshot first.");
+    if (!jdText.trim() && uploadedImages.length === 0) {
+      alert("Please paste job description text or upload/paste at least one JD screenshot.");
       return;
     }
 
@@ -141,8 +186,9 @@ export const Optimizer: React.FC = () => {
     const targetRole = roleTitle.trim() || "Software Engineer";
 
     // Initial log steps
-    if (uploadedImage) {
-      addLog("OCR", `Compressing screenshot (${uploadedImage.sizeKb} KB) & running Multimodal Gemini OCR...`);
+    if (uploadedImages.length > 0) {
+      const totalSize = uploadedImages.reduce((sum, img) => sum + img.sizeKb, 0);
+      addLog("OCR", `Compressing & transcribing ${uploadedImages.length} sequential screenshot(s) (${totalSize} KB total) via Gemini Multimodal OCR...`);
     }
     addLog("Sidecar", `Initiating optimization pipeline for ${targetCompany} (${targetRole})...`);
     addLog("Local DB", "Performing Semantic Project Similarity Retrieval over /projects SSOT...");
@@ -160,7 +206,7 @@ export const Optimizer: React.FC = () => {
           role_title: targetRole,
           company_url: companyUrl.trim() || undefined,
           jd_raw_text: jdText.trim() || undefined,
-          screenshot_base64: uploadedImage ? uploadedImage.base64 : undefined,
+          screenshots_base64: uploadedImages.length > 0 ? uploadedImages.map((img) => img.base64) : undefined,
           personalization_enabled: personalizationEnabled,
         }),
       });
@@ -199,14 +245,17 @@ export const Optimizer: React.FC = () => {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const totalUploadedKb = uploadedImages.reduce((sum, img) => sum + img.sizeKb, 0);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto pb-12">
-      {/* Hidden File Input */}
+      {/* Hidden File Input for Multiple Files */}
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFileChange}
+        onChange={handleFileInputChange}
         accept="image/png,image/jpeg,image/jpg,image/webp"
+        multiple
         className="hidden"
       />
 
@@ -219,7 +268,7 @@ export const Optimizer: React.FC = () => {
             <span>Application Optimizer</span>
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Dual-input JD processing with grounded 3-stage company personalization and Word DOCX rebuild.
+            Dual-input JD processing with screenshot paste (Ctrl+V), grounded company personalization, and Word DOCX rebuild.
           </p>
         </div>
 
@@ -259,7 +308,7 @@ export const Optimizer: React.FC = () => {
           </div>
         </div>
 
-        {/* Dual Input Area: Job Description Text & Screenshot Box */}
+        {/* Dual Input Area: Job Description Text & Multi-Screenshot Box */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-mono font-semibold text-white uppercase flex items-center space-x-1.5">
@@ -271,45 +320,73 @@ export const Optimizer: React.FC = () => {
               value={jdText}
               onChange={(e) => setJdText(e.target.value)}
               className="w-full bg-background-card border border-border-subtle rounded-lg p-3 text-xs text-text-primary font-mono focus:outline-none focus:border-legion-crimson leading-relaxed"
-              placeholder="Paste raw job description text here, or drop a screenshot on the right..."
+              placeholder="Paste raw job description text here, or press Ctrl+V to paste screenshots..."
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-mono font-semibold text-white uppercase flex items-center space-x-1.5">
-              <Upload className="w-3.5 h-3.5 text-sky-400" />
-              <span>Or Upload / Drop Screenshot JD</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-mono font-semibold text-white uppercase flex items-center space-x-1.5">
+                <Upload className="w-3.5 h-3.5 text-sky-400" />
+                <span>Upload, Drop, or Paste (Ctrl+V)</span>
+              </label>
 
-            {uploadedImage ? (
-              <div className="h-[148px] rounded-lg border border-emerald-800/80 bg-emerald-950/20 p-3 flex flex-col justify-between relative group">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <img
-                      src={uploadedImage.previewUrl}
-                      alt="JD Preview"
-                      className="w-12 h-12 object-cover rounded border border-emerald-700/60"
-                    />
-                    <div>
-                      <div className="text-xs font-bold text-white truncate max-w-[150px]">
-                        {uploadedImage.name}
-                      </div>
-                      <div className="text-[10px] font-mono text-emerald-400">
-                        {uploadedImage.sizeKb} KB • Screenshot Ready
-                      </div>
-                    </div>
+              {uploadedImages.length > 0 && (
+                <button
+                  onClick={clearAllImages}
+                  className="text-[10px] font-mono text-rose-400 hover:underline"
+                >
+                  Clear all ({uploadedImages.length})
+                </button>
+              )}
+            </div>
+
+            {uploadedImages.length > 0 ? (
+              <div className="rounded-lg border border-border-subtle bg-background-card p-3 space-y-2">
+                <div className="flex items-center justify-between border-b border-border-subtle pb-2">
+                  <div className="flex items-center space-x-1.5 text-xs font-mono text-emerald-400 font-bold">
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{uploadedImages.length} Screenshot(s) Attached ({totalUploadedKb} KB)</span>
                   </div>
                   <button
-                    onClick={removeUploadedImage}
-                    className="p-1 rounded-full bg-zinc-800 hover:bg-rose-900 text-text-muted hover:text-white transition-colors"
-                    title="Remove Screenshot"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono bg-zinc-800 hover:bg-zinc-700 text-text-primary transition-colors"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Plus className="w-3 h-3" />
+                    <span>Add More</span>
                   </button>
                 </div>
-                <div className="text-[10px] font-mono text-text-secondary flex items-center space-x-1">
-                  <Check className="w-3 h-3 text-emerald-400" />
-                  <span>Multimodal OCR will extract JD requirements automatically.</span>
+
+                {/* Thumbnails Scrollable Strip */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[110px] overflow-y-auto pr-1">
+                  {uploadedImages.map((img) => (
+                    <div
+                      key={img.id}
+                      className="relative p-1.5 rounded bg-background-deep border border-border-subtle flex items-center space-x-2 group hover:border-legion-crimson transition-colors"
+                    >
+                      <img
+                        src={img.previewUrl}
+                        alt="JD segment"
+                        className="w-10 h-10 object-cover rounded border border-border-subtle flex-shrink-0"
+                      />
+                      <div className="overflow-hidden flex-1">
+                        <div className="text-[11px] font-mono text-white truncate">{img.name}</div>
+                        <div className="text-[10px] font-mono text-text-muted">{img.sizeKb} KB</div>
+                      </div>
+                      <button
+                        onClick={(e) => removeUploadedImage(img.id, e)}
+                        className="p-1 rounded-full bg-zinc-800 hover:bg-rose-950 text-text-muted hover:text-rose-400 transition-colors"
+                        title="Remove segment"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-[10px] font-mono text-text-muted flex items-center space-x-1">
+                  <ClipboardPaste className="w-3 h-3 text-sky-400" />
+                  <span>Press <kbd className="px-1 py-0.5 bg-zinc-800 rounded text-[9px] text-white">Ctrl+V</kbd> to paste additional screenshot segments.</span>
                 </div>
               </div>
             ) : (
@@ -324,17 +401,28 @@ export const Optimizer: React.FC = () => {
                     : "border-border-subtle bg-background-card hover:border-legion-crimson/60"
                 }`}
               >
-                <Upload className="w-6 h-6 text-text-muted group-hover:text-legion-crimson transition-colors" />
+                <div className="flex items-center space-x-2">
+                  <Upload className="w-5 h-5 text-text-muted group-hover:text-legion-crimson transition-colors" />
+                  <ClipboardPaste className="w-5 h-5 text-sky-400 opacity-70 group-hover:opacity-100 transition-opacity" />
+                </div>
                 <span className="mt-2 text-xs font-medium text-text-primary">
-                  Click to upload or drag &amp; drop JD screenshot
+                  Click to upload, drop files, or press <strong className="text-white font-mono">Ctrl+V</strong> to paste
                 </span>
                 <span className="text-[10px] text-text-muted mt-0.5 font-mono">
-                  PNG, JPG, WEBP • Auto-compressed via Pillow (ADR 1)
+                  Supports multiple screenshots (top + middle + bottom requirements)
                 </span>
               </div>
             )}
           </div>
         </div>
+
+        {/* Paste notification toast */}
+        {pasteNotice && (
+          <div className="p-2.5 rounded bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 text-xs font-mono flex items-center space-x-2 shadow-[0_0_12px_rgba(16,185,129,0.3)] animate-bounce">
+            <ClipboardPaste className="w-4 h-4 text-emerald-400" />
+            <span>{pasteNotice}</span>
+          </div>
+        )}
 
         {/* Advanced Parameter Controls & Guardrails */}
         <div className="p-4 rounded-lg bg-background-card border border-border-subtle space-y-3">

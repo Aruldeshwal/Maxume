@@ -79,6 +79,8 @@ class OptimizeApplicationRequest(BaseModel):
     jd_raw_text: Optional[str] = None
     screenshot_path: Optional[str] = None
     screenshot_base64: Optional[str] = None
+    screenshots_base64: Optional[List[str]] = None
+    screenshot_paths: Optional[List[str]] = None
     master_resume_path: Optional[str] = None
     output_dir: Optional[str] = None
     personalization_enabled: Optional[bool] = True
@@ -272,25 +274,42 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     company_clean = (payload.company_name or "").strip()
     role_clean = (payload.role_title or "").strip()
     
-    # 1. JD text extraction & Screenshot OCR
+    # 1. JD text extraction & Multi-Screenshot OCR
     jd_text = payload.jd_raw_text or ""
     compressed_img = None
     
-    # If base64 screenshot was uploaded directly from UI
-    if payload.screenshot_base64:
+    # Collect all base64 screenshots (single or list)
+    b64_list = []
+    if payload.screenshots_base64:
+        b64_list.extend(payload.screenshots_base64)
+    elif payload.screenshot_base64:
+        b64_list.append(payload.screenshot_base64)
+
+    temp_paths = []
+    if b64_list:
         try:
-            raw_b64 = payload.screenshot_base64
-            if "," in raw_b64:
-                raw_b64 = raw_b64.split(",")[1]
             import base64
             import tempfile
-            img_bytes = base64.b64decode(raw_b64)
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tf:
-                tf.write(img_bytes)
-                temp_path = tf.name
+            for b64_data in b64_list:
+                raw_b64 = b64_data.split(",")[1] if "," in b64_data else b64_data
+                img_bytes = base64.b64decode(raw_b64)
+                with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tf:
+                    tf.write(img_bytes)
+                    temp_paths.append(tf.name)
             
-            compressed_img, _, _ = compress_jd_screenshot(temp_path)
-            ocr_res = await gemini_service.ocr_screenshot_jd(temp_path)
+            if temp_paths:
+                compressed_img, _, _ = compress_jd_screenshot(temp_paths[0])
+                ocr_res = await gemini_service.ocr_screenshot_jd(temp_paths)
+                jd_text = ocr_res.get("raw_text") or jd_text
+                if not company_clean and ocr_res.get("company_name"):
+                    company_clean = ocr_res["company_name"]
+                if not role_clean and ocr_res.get("role_title"):
+                    role_clean = ocr_res["role_title"]
+        except Exception:
+            pass
+    elif payload.screenshot_paths:
+        try:
+            ocr_res = await gemini_service.ocr_screenshot_jd(payload.screenshot_paths)
             jd_text = ocr_res.get("raw_text") or jd_text
             if not company_clean and ocr_res.get("company_name"):
                 company_clean = ocr_res["company_name"]
