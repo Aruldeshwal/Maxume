@@ -106,6 +106,25 @@ async def get_config():
         "master_resume_path": os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
     }
 
+class OpenFolderRequest(BaseModel):
+    path: str
+
+@app.post("/api/open-folder")
+async def open_folder_in_os(payload: OpenFolderRequest):
+    """Opens a folder or file in Windows File Explorer."""
+    import subprocess
+    target_path = os.path.abspath(payload.path)
+    if os.path.exists(target_path):
+        try:
+            if os.path.isdir(target_path):
+                subprocess.Popen(["explorer", target_path])
+            else:
+                subprocess.Popen(["explorer", "/select,", target_path])
+            return {"status": "ok", "opened_path": target_path}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    raise HTTPException(status_code=404, detail=f"Path '{target_path}' does not exist.")
+
 class ProjectVisibilityRequest(BaseModel):
     is_hidden: Optional[int] = None
 

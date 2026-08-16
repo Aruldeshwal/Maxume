@@ -10,7 +10,8 @@ import {
   UserCheck,
   X,
   Plus,
-  ClipboardPaste
+  ClipboardPaste,
+  FolderOpen
 } from "lucide-react";
 import TerminalLog, { LogLine } from "../components/TerminalLog";
 import SignalCard from "../components/SignalCard";
@@ -243,6 +244,17 @@ export const Optimizer: React.FC = () => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleOpenFolder = async (path: string) => {
+    if (!path) return;
+    try {
+      await fetch("http://127.0.0.1:8000/api/open-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
+    } catch {}
   };
 
   const totalUploadedKb = uploadedImages.reduce((sum, img) => sum + img.sizeKb, 0);
@@ -548,10 +560,31 @@ export const Optimizer: React.FC = () => {
               {activeTabSub === "cover_letter" && activeResult.cover_letter}
               {activeTabSub === "email" && activeResult.outreach_email}
               {activeTabSub === "resume" && (
-                <div className="space-y-2 py-4 text-center">
-                  <div className="text-emerald-400 font-bold">Resume DOCX Successfully Compiled!</div>
-                  <div className="text-[11px] text-text-muted truncate">{activeResult.resume_path}</div>
-                  <div className="text-xs text-text-secondary">Single-page guardrail applied (max 4 projects, clickable live hyperlinks).</div>
+                <div className="space-y-4 py-4 text-center">
+                  <div className="text-emerald-400 font-bold text-sm">Resume DOCX Successfully Compiled!</div>
+                  <div className="p-2.5 rounded bg-background-card border border-border-subtle text-left max-w-lg mx-auto space-y-1">
+                    <div className="text-[11px] text-text-muted uppercase">Output Location:</div>
+                    <div className="text-xs text-white font-bold select-all break-all">{activeResult.resume_path || activeResult.output_folder}</div>
+                  </div>
+                  <div className="flex items-center justify-center space-x-3 pt-2">
+                    <button
+                      onClick={() => handleOpenFolder(activeResult.output_folder || activeResult.resume_path)}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs shadow-[0_0_12px_rgba(225,29,72,0.4)] transition-all"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5" />
+                      <span>Open in Windows Explorer</span>
+                    </button>
+                    {activeResult.resume_path && (
+                      <button
+                        onClick={() => handleOpenFolder(activeResult.resume_path)}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-text-primary font-mono text-xs transition-colors"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-sky-400" />
+                        <span>Open Word Document</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-[11px] text-text-secondary">Single-page guardrail applied (max 4 projects with clickable live demo links).</div>
                 </div>
               )}
             </div>
