@@ -79,3 +79,14 @@ Even a well-grounded prompt at `temperature: 0.0` can occasionally paraphrase a 
 ### Risk D: Quota Contention
 Company signal research shares its Google CSE quota with employee lookup (both draw from the same 100/day budget, `codestandards.md` §2 note). A user researching many companies in one session could exhaust the daily quota faster than expected.
 *   *Mitigation*: The Personalization Toggle (`ui.md` Tab C) lets a user skip research per-application; the Quota Tracker ring (`ui.md` Tab A) surfaces remaining CSE budget before it's exhausted rather than after.
+
+---
+
+## 5. Windows SQLite File-Locking in Connection Lifecycles
+
+### The Problem
+In Python's standard `sqlite3` module, the default context manager syntax (`with conn:`) manages only transaction boundaries (commit/rollback) and leaves the file handle open until garbage collection. On Windows (NTFS), open SQLite handles strictly lock the underlying `.db` and WAL files, causing `WinError 32 (PermissionError)` when cleaning temporary fixtures or rotating databases.
+
+### Mitigation Actions
+`Database.get_connection()` is implemented as an explicit `@contextmanager` that yields the connection inside a `try` block and guarantees `conn.close()` inside the `finally` block, ensuring immediate handle release and crash-free file operations on Windows.
+
