@@ -3,6 +3,7 @@
 import os
 import json
 import re
+import logging
 import requests
 from typing import List, Dict, Any, Optional, Union
 from dotenv import load_dotenv
@@ -11,15 +12,26 @@ from app.image_optimizer import compress_jd_screenshot
 
 load_dotenv()
 
-GEMINI_MODEL = "gemini-2.5-flash-lite"
+logger = logging.getLogger("maxume.gemini")
+
+# Production flash models in priority order
+CANDIDATE_GEMINI_MODELS = [
+    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro"
+]
 
 class GeminiService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
 
-    def _get_api_url(self) -> str:
+    def _get_api_urls(self) -> List[str]:
         key = self.api_key or os.environ.get("GEMINI_API_KEY", "")
-        return f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
+        return [
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+            for model in CANDIDATE_GEMINI_MODELS
+        ]
 
     async def ocr_screenshot_jd(
         self,
@@ -46,19 +58,21 @@ class GeminiService:
         image_parts = []
         for p in paths_list:
             if os.path.exists(p):
-                _, b64_img, _ = compress_jd_screenshot(p)
-                image_parts.append({
-                    "inlineData": {
-                        "mimeType": "image/jpeg",
-                        "data": b64_img
-                    }
-                })
+                try:
+                    _, b64_img, _ = compress_jd_screenshot(p)
+                    image_parts.append({
+                        "inlineData": {
+                            "mimeType": "image/jpeg",
+                            "data": b64_img
+                        }
+                    })
+                except Exception:
+                    continue
 
         if not image_parts:
             return {"company_name": "", "role_title": "", "raw_text": "", "key_skills": []}
 
         async def call_ocr():
-            url = self._get_api_url()
             prompt = (
                 "You are given one or more sequential screenshots of a job description. "
                 "Carefully transcribe and extract all textual information across all provided images in chronological order. "
@@ -79,24 +93,35 @@ class GeminiService:
                     "maxOutputTokens": 3000
                 }
             }
-            res = requests.post(url, json=payload, timeout=15.0)
-            if res.status_code == 200:
-                data = res.json()
-                text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+
+            for url in self._get_api_urls():
                 try:
-                    return json.loads(clean_json_str)
+                    res = requests.post(url, json=payload, timeout=15.0)
+                    if res.status_code == 200:
+                        data = res.json()
+                        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+                        try:
+                            return json.loads(clean_json_str)
+                        except Exception:
+                            return {
+                                "company_name": "Target Company",
+                                "role_title": "Software Engineer",
+                                "raw_text": text,
+                                "key_skills": []
+                            }
+                    elif res.status_code == 429:
+                        raise RuntimeError(f"Gemini 429: {res.text}")
+                    elif res.status_code == 404:
+                        # Try next candidate model
+                        continue
+                except RuntimeError as r_err:
+                    if "429" in str(r_err):
+                        raise r_err
                 except Exception:
-                    return {
-                        "company_name": "Target Company",
-                        "role_title": "Software Engineer",
-                        "raw_text": text,
-                        "key_skills": []
-                    }
-            elif res.status_code == 429:
-                raise RuntimeError(f"Gemini 429: {res.text}")
-            else:
-                raise RuntimeError(f"Gemini OCR error: {res.status_code} - {res.text}")
+                    continue
+
+            return {"company_name": "Target Company", "role_title": "Software Engineer", "raw_text": "", "key_skills": []}
 
         return await scheduler.execute_task("gemini", call_ocr)
 
@@ -109,7 +134,7 @@ class GeminiService:
     ) -> List[Dict[str, Any]]:
         """
         Takes top candidate projects, uses Gemini to select the best 3-4 matches,
-        and selects 3-4 concise, impactful bullet points per project.
+        and selects 3-4 concise, impactful bullet points per project with robust local fallback.
         """
         if mock_response is not None:
             return mock_response[:top_k]
@@ -119,8 +144,27 @@ class GeminiService:
 
         prefiltered = candidate_projects[:8]
 
+        def get_local_fallback() -> List[Dict[str, Any]]:
+            fallback_list = []
+            for i, p in enumerate(prefiltered[:top_k]):
+                summary_txt = p.get("summary_markdown", "")
+                extracted_bullets = [
+                    line.lstrip("-*• ").strip()
+                    for line in summary_txt.splitlines()
+                    if line.strip().startswith(("-", "*", "•")) and len(line.strip()) > 15
+                ]
+                if not extracted_bullets:
+                    extracted_bullets = ["Engineered high performance component.", "Optimized storage and API latency."]
+
+                fallback_list.append({
+                    "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
+                    "tech_stack": p.get("tech_stack", "General Engineering"),
+                    "live_demo_url": p.get("live_demo_url"),
+                    "bullets": extracted_bullets[:4]
+                })
+            return fallback_list
+
         async def call_rerank():
-            url = self._get_api_url()
             projects_summary_str = ""
             for i, p in enumerate(prefiltered):
                 projects_summary_str += (
@@ -148,38 +192,34 @@ class GeminiService:
                 }
             }
 
-            res = requests.post(url, json=payload, timeout=12.0)
-            if res.status_code == 200:
-                data = res.json()
-                text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+            for url in self._get_api_urls():
                 try:
-                    ranked = json.loads(clean_json_str)
-                    return ranked[:top_k]
+                    res = requests.post(url, json=payload, timeout=12.0)
+                    if res.status_code == 200:
+                        data = res.json()
+                        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+                        try:
+                            ranked = json.loads(clean_json_str)
+                            return ranked[:top_k]
+                        except Exception:
+                            return get_local_fallback()
+                    elif res.status_code == 429:
+                        raise RuntimeError(f"Gemini 429: {res.text}")
+                    elif res.status_code == 404:
+                        continue
+                except RuntimeError as r_err:
+                    if "429" in str(r_err):
+                        raise r_err
                 except Exception:
-                    fallback_list = []
-                    for i, p in enumerate(prefiltered[:top_k]):
-                        summary_txt = p.get("summary_markdown", "")
-                        extracted_bullets = [
-                            line.lstrip("-*• ").strip()
-                            for line in summary_txt.splitlines()
-                            if line.strip().startswith(("-", "*", "•")) and len(line.strip()) > 15
-                        ]
-                        if not extracted_bullets:
-                            extracted_bullets = ["Engineered high performance component.", "Optimized storage and API latency."]
+                    continue
 
-                        fallback_list.append({
-                            "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
-                            "tech_stack": p.get("tech_stack", "General Engineering"),
-                            "live_demo_url": p.get("live_demo_url"),
-                            "bullets": extracted_bullets[:4]
-                        })
-                    return fallback_list
-            elif res.status_code == 429:
-                raise RuntimeError(f"Gemini 429: {res.text}")
-            else:
-                raise RuntimeError(f"Gemini rerank error: {res.status_code} - {res.text}")
+            # Graceful local fallback if cloud API is unreachable
+            return get_local_fallback()
 
-        return await scheduler.execute_task("gemini", call_rerank)
+        try:
+            return await scheduler.execute_task("gemini", call_rerank)
+        except Exception:
+            return get_local_fallback()
 
 gemini_service = GeminiService()

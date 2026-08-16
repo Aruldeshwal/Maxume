@@ -241,27 +241,31 @@ def research_company(
         summary_text = mock_gemini_response
     elif gemini_key:
         try:
-            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_key}"
-            prompt_content = (
-                "You will be given raw search snippets about a company, each with its source URL and date. "
-                "Summarize ONLY what is stated in these snippets into up to 3 short, factual bullet points, each ending with its source URL in parentheses. "
-                "Do not add outside knowledge, do not infer unstated facts, and do not resolve ambiguity by guessing. "
-                "If the snippets do not support any usable, specific claim, respond with exactly: NO_SIGNALS_FOUND\n\n"
-                f"SNIPPETS:\n{formatted_snippets_text}"
-            )
-            payload = {
-                "contents": [{"parts": [{"text": prompt_content}]}],
-                "generationConfig": {
-                    "temperature": 0.0,
-                    "maxOutputTokens": 512
+            for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]:
+                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                prompt_content = (
+                    "You will be given raw search snippets about a company, each with its source URL and date. "
+                    "Summarize ONLY what is stated in these snippets into up to 3 short, factual bullet points, each ending with its source URL in parentheses. "
+                    "Do not add outside knowledge, do not infer unstated facts, and do not resolve ambiguity by guessing. "
+                    "If the snippets do not support any usable, specific claim, respond with exactly: NO_SIGNALS_FOUND\n\n"
+                    f"SNIPPETS:\n{formatted_snippets_text}"
+                )
+                payload = {
+                    "contents": [{"parts": [{"text": prompt_content}]}],
+                    "generationConfig": {
+                        "temperature": 0.0,
+                        "maxOutputTokens": 512
+                    }
                 }
-            }
-            res = requests.post(gemini_url, json=payload, timeout=8.0)
-            if res.status_code == 200:
-                data = res.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    summary_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                res = requests.post(gemini_url, json=payload, timeout=8.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        summary_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        break
+                elif res.status_code == 404:
+                    continue
         except Exception:
             pass
 
