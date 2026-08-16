@@ -103,7 +103,7 @@ def synthesize_high_impact_bullets_ai(
             groq_url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
             payload = {
-                "model": "llama-3.3-70b-specdec",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": "You are a FAANG technical resume writer. Output ONLY a JSON array of 3-4 high-impact resume bullet points."},
                     {"role": "user", "content": prompt}
@@ -125,7 +125,7 @@ def synthesize_high_impact_bullets_ai(
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         try:
-            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={gemini_key}"
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
