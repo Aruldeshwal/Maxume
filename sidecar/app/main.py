@@ -25,6 +25,7 @@ from app.employee_lookup import lookup_company_employees
 from app.gemini_service import gemini_service
 from app.groq_service import groq_service
 from app.image_optimizer import compress_jd_screenshot
+from app.github_sync import sync_github_profile_repositories
 
 app = FastAPI(
     title="Maxume Python Sidecar",

@@ -35,6 +35,17 @@ def test_projects_crud_endpoint(client):
     assert upsert_res.status_code == 200
     assert upsert_res.json()["status"] == "ok"
 
+def test_github_sync_endpoint(client):
+    with patch("app.main.sync_github_profile_repositories") as mock_sync:
+        mock_sync.return_value = [
+            {"directory_name": "repo1", "live_demo_url": "https://demo.com", "bullet_points": ["Point 1"]}
+        ]
+        res = client.post("/api/projects/github-sync", json={"username": "testuser"})
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "ok"
+        assert len(data["results"]) == 1
+
 def test_applications_crud_endpoint(client):
     create_res = client.post(
         "/api/applications",
