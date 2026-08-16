@@ -372,9 +372,19 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     )
 
     # 4. Resume DOCX Rebuilding
-    template_path = payload.master_resume_path or os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
-    out_root = payload.output_dir or os.environ.get("OUTPUT_DIR_PATH", "./output")
-    company_slug = "".join(c for c in company_clean if c.isalnum() or c in ("-", "_")).lower()
+    raw_template = payload.master_resume_path or os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
+    candidate_template_paths = [
+        raw_template,
+        os.path.abspath(raw_template),
+        os.path.join(os.getcwd(), raw_template),
+        os.path.join(os.path.dirname(__file__), "..", "..", raw_template),
+        os.path.join(os.path.dirname(__file__), "..", "..", "Master_Resume.docx"),
+    ]
+    template_path = next((p for p in candidate_template_paths if os.path.exists(p)), raw_template)
+
+    raw_out = payload.output_dir or os.environ.get("OUTPUT_DIR_PATH", "./output")
+    out_root = os.path.abspath(raw_out)
+    company_slug = "".join(c for c in company_clean if c.isalnum() or c in ("-", "_")).lower() or "company"
     app_output_dir = os.path.join(out_root, company_slug)
     os.makedirs(app_output_dir, exist_ok=True)
 
@@ -386,8 +396,8 @@ async def optimize_application(payload: OptimizeApplicationRequest):
             projects=ranked_projects,
             skills={"Technical Skills": ["Python", "TypeScript", "Go", "Docker", "FastAPI", "React"]}
         )
-    except Exception:
-        compiled_resume_path = ""
+    except Exception as docx_err:
+        logger.error(f"DocxEngine rebuild failed: {docx_err}", exc_info=True)
 
     # 5. Extract bullet highlights for creative copy
     bullet_highlights = []
