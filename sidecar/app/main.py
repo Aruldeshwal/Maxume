@@ -20,6 +20,11 @@ from app.database import db
 from app.git_watcher import GitWatcher
 from app.docx_engine import DocxEngine
 from app.ollama_manager import ollama_manager
+from app.company_research import research_company, ResearchBrief
+from app.employee_lookup import lookup_company_employees
+from app.gemini_service import gemini_service
+from app.groq_service import groq_service
+from app.image_optimizer import compress_jd_screenshot
 
 app = FastAPI(
     title="Maxume Python Sidecar",
@@ -59,6 +64,22 @@ class DocxRebuildRequest(BaseModel):
     projects: List[Dict[str, Any]]
     skills: Union[List[str], Dict[str, List[str]]]
     hyperlink_color: Optional[str] = "990000"
+
+class CompanyResearchRequest(BaseModel):
+    company_name: str
+    company_url: Optional[str] = None
+    recency_days: Optional[int] = 90
+    max_signals: Optional[int] = 5
+
+class OptimizeApplicationRequest(BaseModel):
+    company_name: str
+    role_title: str
+    company_url: Optional[str] = None
+    jd_raw_text: Optional[str] = None
+    screenshot_path: Optional[str] = None
+    master_resume_path: Optional[str] = None
+    output_dir: Optional[str] = None
+    personalization_enabled: Optional[bool] = True
 
 # --- Endpoints ---
 
@@ -162,6 +183,174 @@ async def list_ollama_models(
 ):
     """Lists local models with dynamic VRAM guardrail calculations."""
     return ollama_manager.list_models(num_ctx=num_ctx, budget_gb=budget_gb)
+
+# Company Signal Research
+@app.post("/api/research")
+async def execute_company_research(payload: CompanyResearchRequest):
+    """Executes 5-stage company research pipeline with 3-stage hallucination guard."""
+    brief = research_company(
+        company_name=payload.company_name,
+        company_url=payload.company_url,
+        recency_days=payload.recency_days or 90,
+        max_signals=payload.max_signals or 5
+    )
+    return brief.model_dump()
+
+# Full End-to-End Application Optimization Pipeline
+@app.post("/api/optimize")
+async def optimize_application(payload: OptimizeApplicationRequest):
+    """
+    Executes full hybrid optimization pipeline:
+    1. Screenshot OCR / JD analysis
+    2. Project selection & Gemini reranking
+    3. Company signal research (grounded)
+    4. Resume DOCX compilation
+    5. Groq cover letter, referral, and email generation
+    6. Networking employee discovery
+    7. Persistence to local SQLite DB and /output folder
+    """
+    company_clean = payload.company_name.strip()
+    role_clean = payload.role_title.strip()
+    
+    # 1. JD text extraction
+    jd_text = payload.jd_raw_text or ""
+    compressed_img = None
+    if payload.screenshot_path and os.path.exists(payload.screenshot_path):
+        try:
+            compressed_img, _, _ = compress_jd_screenshot(payload.screenshot_path)
+            ocr_res = await gemini_service.ocr_screenshot_jd(payload.screenshot_path)
+            jd_text = ocr_res.get("raw_text") or jd_text
+            if not company_clean and ocr_res.get("company_name"):
+                company_clean = ocr_res["company_name"]
+            if not role_clean and ocr_res.get("role_title"):
+                role_clean = ocr_res["role_title"]
+        except Exception:
+            pass
+
+    # 2. Company Research Signals (Stage 4)
+    research_brief = None
+    personalization_status = "Not Attempted"
+    if payload.personalization_enabled:
+        research_brief = research_company(
+            company_name=company_clean,
+            company_url=payload.company_url,
+            recency_days=90,
+            max_signals=5
+        )
+        personalization_status = "Found" if research_brief.status == "FOUND" else "None Found"
+
+    # 3. Pull projects and rerank
+    all_projects = db.list_projects()
+    ranked_projects = await gemini_service.rerank_projects_for_jd(
+        jd_text=jd_text,
+        candidate_projects=all_projects,
+        top_k=4
+    )
+
+    # 4. Resume DOCX Rebuilding
+    template_path = payload.master_resume_path or os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
+    out_root = payload.output_dir or os.environ.get("OUTPUT_DIR_PATH", "./output")
+    company_slug = "".join(c for c in company_clean if c.isalnum() or c in ("-", "_")).lower()
+    app_output_dir = os.path.join(out_root, company_slug)
+    os.makedirs(app_output_dir, exist_ok=True)
+
+    compiled_resume_path = os.path.join(app_output_dir, f"{company_slug}_Resume.docx")
+    try:
+        DocxEngine.rebuild_resume(
+            template_path=template_path,
+            output_path=compiled_resume_path,
+            projects=ranked_projects,
+            skills={"Technical Skills": ["Python", "TypeScript", "Go", "Docker", "FastAPI", "React"]}
+        )
+    except Exception:
+        compiled_resume_path = ""
+
+    # 5. Extract bullet highlights for creative copy
+    bullet_highlights = []
+    for p in ranked_projects:
+        for b in p.get("bullets", [])[:2]:
+            bullet_highlights.append(b)
+
+    # 6. Groq Creative Generation
+    cover_letter = await groq_service.generate_cover_letter(
+        company_name=company_clean,
+        role_title=role_clean,
+        resume_bullets=bullet_highlights,
+        research_brief=research_brief
+    )
+
+    outreach_email = await groq_service.generate_application_email(
+        company_name=company_clean,
+        role_title=role_clean,
+        resume_bullets=bullet_highlights,
+        research_brief=research_brief
+    )
+
+    # Write copy files to output folder
+    cover_letter_file = os.path.join(app_output_dir, f"{company_slug}_CoverLetter.txt")
+    email_file = os.path.join(app_output_dir, f"{company_slug}_Email.txt")
+    try:
+        with open(cover_letter_file, "w", encoding="utf-8") as f:
+            f.write(cover_letter)
+        with open(email_file, "w", encoding="utf-8") as f:
+            f.write(outreach_email)
+    except Exception:
+        pass
+
+    # 7. Employee Networking Discovery
+    contacts = await lookup_company_employees(company_name=company_clean)
+
+    # 8. SQLite Database Persistence
+    app_id = db.create_application(
+        company_name=company_clean,
+        role_title=role_clean,
+        status="Draft",
+        jd_raw_text=jd_text,
+        compressed_image_path=compressed_img,
+        output_folder_path=app_output_dir,
+        personalization_status=personalization_status
+    )
+
+    # Persist signals
+    if research_brief and research_brief.signals:
+        for s in research_brief.signals:
+            db.add_company_signal(
+                application_id=app_id,
+                signal_type=s.signal_type,
+                headline=s.headline,
+                source_url=s.source_url,
+                source_tier=s.source_tier,
+                published_at=s.published_at,
+                used_in_output=1,
+                guard_check_passed=1 if s.guard_check_passed else 0
+            )
+
+    # Persist networking contacts
+    saved_contacts = []
+    for c in contacts:
+        cid = db.add_networking_contact(
+            application_id=app_id,
+            employee_name=c["employee_name"],
+            employee_tagline=c["employee_tagline"],
+            profile_url=c["profile_url"],
+            referral_status="Not Contacted"
+        )
+        saved_contacts.append({**c, "id": cid})
+
+    return {
+        "status": "ok",
+        "application_id": app_id,
+        "output_folder": app_output_dir,
+        "resume_path": compiled_resume_path,
+        "cover_letter_path": cover_letter_file,
+        "email_path": email_file,
+        "cover_letter": cover_letter,
+        "outreach_email": outreach_email,
+        "personalization_status": personalization_status,
+        "research_brief": research_brief.model_dump() if research_brief else None,
+        "networking_contacts": saved_contacts,
+        "ranked_projects": ranked_projects
+    }
 
 if __name__ == "__main__":
     import uvicorn

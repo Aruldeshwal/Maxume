@@ -16,6 +16,12 @@ Categories per release: `Added`, `Changed`, `Fixed`, `Removed`, `Security`.
 - Paragraph-Level DOCX style cloning engine (`docx_engine.py`) with OXML clickable hyperlink embedding.
 - Single-page resume compile guardrail (enforcing maximum 4 projects and 4 bullets per project).
 - Dynamic local Ollama model discovery (`GET /api/ollama/models`) with hardware VRAM budget guardrails.
+- Pillow screenshot downscaling and grayscale compression pipeline (`image_optimizer.py`).
+- Gemini 2.5 Flash-Lite multimodal OCR and semantic project selection/reranker (`gemini_service.py`).
+- 5-Stage Company Signal Research pipeline (`company_research.py`) with 3-Stage Hallucination Guard (`containment.py`).
+- Google Custom Search Engine (CSE) LinkedIn Employee Lookup module (`employee_lookup.py`).
+- Groq LPU Creative Generation service (`groq_service.py`) for grounded cover letters, referrals, and emails.
+- Token-Bucket Rate Limiter and asynchronous backoff scheduler (`scheduler.py`).
 
 ---
 

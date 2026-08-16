@@ -77,11 +77,11 @@ CREATE TABLE IF NOT EXISTS company_research_signals (
   [x] Dynamic Local Ollama tags lookup & model swapper
 
   Phase 3: Multimodal & Cloud APIs (Weeks 5-6)
-  [ ] Pillow local image compression setup for Screenshot JD input
-  [ ] Gemini 2.5 Flash OCR & Semantic Project Selection Integration
-  [ ] Company Signal Research pipeline + hallucination guard (company_research.py)
-  [ ] Google CSE loophole API integration for employee lookup
-  [ ] Groq Creative Generation API (emails/referrals/cover letters), consuming
+  [x] Pillow local image compression setup for Screenshot JD input
+  [x] Gemini 2.5 Flash OCR & Semantic Project Selection Integration
+  [x] Company Signal Research pipeline + hallucination guard (company_research.py)
+  [x] Google CSE loophole API integration for employee lookup
+  [x] Groq Creative Generation API (emails/referrals/cover letters), consuming
       the research brief as a grounding constraint
 
   Phase 4: Legion UI & Polish (Weeks 7-8)
