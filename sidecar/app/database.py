@@ -192,6 +192,63 @@ class Database:
             conn.commit()
             return cursor.rowcount > 0
 
+    def update_project_custom_fields(
+        self,
+        project_id: int,
+        tech_stack: Optional[str] = None,
+        timeline: Optional[str] = None,
+        live_demo_url: Optional[str] = None,
+        bullets: Optional[List[str]] = None,
+        summary_markdown: Optional[str] = None
+    ) -> bool:
+        """Allows direct editing of a project's tech stack, timeline, live demo URL, and bullets."""
+        with self.get_connection() as conn:
+            cursor = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
+            row = cursor.fetchone()
+            if not row:
+                return False
+            
+            proj = dict(row)
+            curr_summary = proj.get("summary_markdown") or f"# {proj.get('directory_name')}\n"
+            
+            # If summary_markdown was directly passed, use it
+            new_summary = summary_markdown
+            if not new_summary:
+                # Reconstruct summary_markdown with updated fields
+                dir_name = proj.get("directory_name", "Project")
+                demo = live_demo_url if live_demo_url is not None else proj.get("live_demo_url")
+                
+                # Parse existing bullets if not provided
+                if bullets is None:
+                    parsed = self._enrich_project_metadata(proj)
+                    bullets = parsed.get("bullets", [])
+                    
+                tech = tech_stack if tech_stack is not None else (self._enrich_project_metadata(proj).get("tech_stack") or "Software Engineering")
+                time_val = timeline if timeline is not None else (self._enrich_project_metadata(proj).get("timeline") or "2024")
+                
+                bullets_formatted = "\n".join(f"- {b.strip().lstrip('- ')}" for b in bullets if b.strip())
+                new_summary = (
+                    f"# {dir_name}\n\n"
+                    f"**Tech Stack**: {tech}\n"
+                    f"**Timeline**: {time_val}\n"
+                    f"**Live Demo**: {demo or 'None'}\n\n"
+                    f"## Engineering Highlights\n{bullets_formatted}\n"
+                )
+
+            final_demo = live_demo_url if live_demo_url is not None else proj.get("live_demo_url")
+            cursor = conn.execute(
+                """
+                UPDATE projects
+                SET summary_markdown = ?,
+                    live_demo_url = ?,
+                    last_synced_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (new_summary, final_demo, project_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def upsert_project(
         self,
         directory_path: str,

@@ -60,6 +60,27 @@ Toggles a project's visibility on compiled resumes.
 }
 ```
 
+### `PUT /api/projects/{id}`
+Updates a project's custom tech stack, timeline, live demo URL, or bullets in SQLite SSOT.
+* **Request**:
+```json
+{
+  "tech_stack": "Tauri v2, React, TypeScript, FastAPI, Python 3.13, SQLite, Tailwind CSS",
+  "timeline": "Oct 2024 – Dec 2024",
+  "live_demo_url": "https://example.com",
+  "bullets": [
+    "Accomplished [X] as measured by [Y], by doing [Z]"
+  ]
+}
+```
+* **Response**:
+```json
+{
+  "status": "ok",
+  "project_id": 1
+}
+```
+
 ### `DELETE /api/projects/{id}`
 Permanently deletes a project from the SQLite database.
 * **Response**:

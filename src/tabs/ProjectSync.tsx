@@ -3,19 +3,22 @@ import {
   FolderSync, 
   CheckCircle2, 
   RefreshCw, 
-  GitBranch, 
   ExternalLink, 
   FileText, 
   AlertCircle, 
-  FolderOpen,
-  Github,
-  Sparkles,
-  Layers,
-  ChevronDown,
-  ChevronUp,
-  Eye,
-  EyeOff,
-  Trash2
+  FolderOpen, 
+  Github, 
+  Sparkles, 
+  Layers, 
+  ChevronDown, 
+  ChevronUp, 
+  Eye, 
+  EyeOff, 
+  Trash2, 
+  Edit3, 
+  Calendar, 
+  X, 
+  Save 
 } from "lucide-react";
 
 interface ProjectItem {
@@ -25,6 +28,9 @@ interface ProjectItem {
   last_commit_hash?: string | null;
   summary_markdown?: string | null;
   live_demo_url?: string | null;
+  tech_stack?: string | null;
+  timeline?: string | null;
+  bullets?: string[] | null;
   is_hidden?: number;
   last_synced_at?: string | null;
   status?: string;
@@ -43,6 +49,14 @@ export const ProjectSync: React.FC = () => {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [syncFeedback, setSyncFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
+
+  // Edit Modal State
+  const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
+  const [editTechStack, setEditTechStack] = useState<string>("");
+  const [editTimeline, setEditTimeline] = useState<string>("");
+  const [editLiveDemo, setEditLiveDemo] = useState<string>("");
+  const [editBulletsText, setEditBulletsText] = useState<string>("");
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
 
   const fetchConfigAndProjects = async () => {
     try {
@@ -73,11 +87,60 @@ export const ProjectSync: React.FC = () => {
     fetchConfigAndProjects();
   }, []);
 
+  const handleOpenEdit = (proj: ProjectItem) => {
+    setEditingProject(proj);
+    setEditTechStack(proj.tech_stack || "");
+    setEditTimeline(proj.timeline || "");
+    setEditLiveDemo(proj.live_demo_url || "");
+    const bulletsList = proj.bullets && proj.bullets.length > 0
+      ? proj.bullets.join("\n")
+      : "";
+    setEditBulletsText(bulletsList);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProject || !editingProject.id) return;
+    setIsSavingEdit(true);
+
+    const bulletsArray = editBulletsText
+      .split("\n")
+      .map((b) => b.trim().replace(/^[-*•]\s*/, ""))
+      .filter(Boolean);
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/projects/${editingProject.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tech_stack: editTechStack.trim(),
+          timeline: editTimeline.trim(),
+          live_demo_url: editLiveDemo.trim() || null,
+          bullets: bulletsArray,
+        }),
+      });
+
+      if (res.ok) {
+        setSyncFeedback({
+          type: "success",
+          text: `Updated '${editingProject.directory_name}' details successfully!`,
+        });
+        setEditingProject(null);
+        await fetchConfigAndProjects();
+      } else {
+        const err = await res.json();
+        setSyncFeedback({ type: "error", text: err.detail || "Failed to update project." });
+      }
+    } catch (e: any) {
+      setSyncFeedback({ type: "error", text: e.message || "Error saving project." });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const handleToggleVisibility = async (proj: ProjectItem) => {
     if (!proj.id) return;
     const newHidden = proj.is_hidden === 1 ? 0 : 1;
 
-    // Optimistic UI update
     setProjects((prev) =>
       prev.map((p) => (p.id === proj.id ? { ...p, is_hidden: newHidden } : p))
     );
@@ -89,7 +152,6 @@ export const ProjectSync: React.FC = () => {
         body: JSON.stringify({ is_hidden: newHidden }),
       });
     } catch {
-      // Revert on error
       fetchConfigAndProjects();
     }
   };
@@ -131,26 +193,25 @@ export const ProjectSync: React.FC = () => {
         const liveCount = data.results?.filter((r: any) => r.live_demo_url)?.length || 0;
         setSyncFeedback({
           type: "success",
-          text: `Successfully synced @${githubUsername}! Found ${count} public repositories (${liveCount} live demo links extracted).`,
+          text: `Successfully synced @${githubUsername}! Found ${count} repositories (${liveCount} live demo links extracted).`,
         });
 
-        // Refresh project list
         const projRes = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
         if (projRes.ok) {
           const pdata = await projRes.json();
           setProjects(pdata.projects || []);
         }
       } else {
-        const errData = await res.json().catch(() => ({}));
+        const err = await res.json();
         setSyncFeedback({
           type: "error",
-          text: `GitHub Sync Failed: ${errData.detail || "Could not fetch repositories."}`,
+          text: err.detail || "Failed to sync GitHub repositories.",
         });
       }
-    } catch (err: any) {
+    } catch (e: any) {
       setSyncFeedback({
         type: "error",
-        text: `Error: ${err.message || "Could not connect to Python sidecar."}`,
+        text: `Sync error: ${e.message || "Backend unreachable"}`,
       });
     } finally {
       setIsSyncing(false);
@@ -173,9 +234,10 @@ export const ProjectSync: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         const count = data.results?.length || 0;
+        const liveCount = data.results?.filter((r: any) => r.live_demo_url)?.length || 0;
         setSyncFeedback({
           type: "success",
-          text: `Scanned local directory "${data.scanned_directory}". Synced ${count} subfolder projects!`,
+          text: `Local sync complete! Indexed ${count} project directories (${liveCount} live demo links extracted).`,
         });
 
         const projRes = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
@@ -184,16 +246,16 @@ export const ProjectSync: React.FC = () => {
           setProjects(pdata.projects || []);
         }
       } else {
-        const errData = await res.json().catch(() => ({}));
+        const err = await res.json();
         setSyncFeedback({
           type: "error",
-          text: `Local Sync Failed: ${errData.detail || "Check folder path."}`,
+          text: err.detail || "Local scan failed.",
         });
       }
-    } catch (err: any) {
+    } catch (e: any) {
       setSyncFeedback({
         type: "error",
-        text: `Error: ${err.message || "Could not connect to Python sidecar."}`,
+        text: `Sync error: ${e.message || "Backend unreachable"}`,
       });
     } finally {
       setIsSyncing(false);
@@ -210,136 +272,118 @@ export const ProjectSync: React.FC = () => {
   const hiddenCount = projects.filter((p) => p.is_hidden === 1).length;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Top Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-border-subtle pb-4">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border-subtle pb-4">
         <div>
-          <h1 className="text-xl font-bold font-mono text-white flex items-center space-x-2">
+          <h1 className="text-xl font-bold font-mono tracking-tight text-white flex items-center space-x-2">
             <FolderSync className="w-5 h-5 text-legion-crimson" />
-            <span>Projects SSOT Synchronizer</span>
+            <span>Project Knowledge Base (SSOT)</span>
           </h1>
           <p className="text-xs text-text-secondary mt-1">
-            Connects your GitHub profile or local directories, auto-detects live demo links, and extracts high-impact resume bullets.
+            Single Source of Truth for verified technical stack, accurate timelines, and FAANG-grade resume bullets.
           </p>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex items-center space-x-1 p-1 rounded-lg bg-background-card border border-border-subtle">
+        {/* Sync Mode Switcher */}
+        <div className="flex items-center space-x-1 bg-background-card p-1 rounded-lg border border-border-subtle text-xs font-mono">
           <button
             onClick={() => setSyncMode("github")}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
+            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-colors ${
               syncMode === "github"
-                ? "bg-legion-crimson text-white font-bold shadow-[0_0_10px_rgba(225,29,72,0.4)]"
+                ? "bg-legion-crimson text-white font-bold"
                 : "text-text-secondary hover:text-white"
             }`}
           >
             <Github className="w-3.5 h-3.5" />
-            <span>Sync from GitHub</span>
+            <span>GitHub Profile Sync</span>
           </button>
           <button
             onClick={() => setSyncMode("local")}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-mono transition-all ${
+            className={`px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition-colors ${
               syncMode === "local"
-                ? "bg-legion-crimson text-white font-bold shadow-[0_0_10px_rgba(225,29,72,0.4)]"
+                ? "bg-legion-crimson text-white font-bold"
                 : "text-text-secondary hover:text-white"
             }`}
           >
             <FolderOpen className="w-3.5 h-3.5" />
-            <span>Sync Local Folder</span>
+            <span>Local Folder</span>
           </button>
         </div>
       </div>
 
-      {/* Sync Control Card */}
+      {/* GitHub Profile Sync Controls */}
       {syncMode === "github" ? (
-        <div className="p-5 rounded-xl bg-background-card border border-border-subtle space-y-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Github className="w-5 h-5 text-white" />
-              <div>
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                  Sync GitHub Public Profile
-                </span>
-                <p className="text-[11px] text-text-muted">
-                  Reads READMEs, parses live demo links (Vercel, Netlify, Render, Cloudflare), and crafts high-impact bullet points.
-                </p>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/40">
-              Zero-Config Public API
-            </span>
+        <div className="p-4 rounded-xl border border-border-subtle bg-background-card space-y-4">
+          <div className="flex items-center space-x-2 text-xs font-mono text-text-secondary">
+            <Github className="w-4 h-4 text-white" />
+            <span className="font-bold text-white uppercase tracking-wider">Sync GitHub Repositories</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-            <div className="md:col-span-5">
-              <label className="text-[11px] font-mono uppercase text-text-secondary">GitHub Username</label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-2 text-xs font-mono text-text-muted">@</span>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="md:col-span-4">
+              <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                GitHub Username
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-text-muted font-mono text-xs">@</span>
                 <input
                   type="text"
                   value={githubUsername}
                   onChange={(e) => setGithubUsername(e.target.value)}
-                  className="w-full bg-background-deep border border-border-subtle rounded pl-7 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
                   placeholder="Aruldeshwal"
+                  className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 pl-7 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
                 />
               </div>
             </div>
 
-            <div className="md:col-span-4">
-              <label className="text-[11px] font-mono uppercase text-text-secondary">GitHub Token (Optional)</label>
+            <div className="md:col-span-5">
+              <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                Personal Access Token (Optional - Higher Rate Limits)
+              </label>
               <input
                 type="password"
                 value={githubToken}
                 onChange={(e) => setGithubToken(e.target.value)}
-                className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
-                placeholder="ghp_... (Optional for private repos)"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
               />
             </div>
 
-            <div className="md:col-span-3 md:mt-5">
+            <div className="md:col-span-3 flex items-end">
               <button
                 onClick={handleGithubSync}
                 disabled={isSyncing || !githubUsername.trim()}
-                className="w-full py-2 px-4 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(225,29,72,0.4)] transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                className="w-full px-4 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-[0_0_15px_rgba(225,29,72,0.3)]"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
-                <span>{isSyncing ? "Fetching Repos..." : "Sync Repositories"}</span>
+                <span>{isSyncing ? "Syncing..." : "Sync GitHub"}</span>
               </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="p-5 rounded-xl bg-background-card border border-border-subtle space-y-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FolderOpen className="w-5 h-5 text-legion-crimson" />
-              <div>
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                  Scan Local Workstation Projects
-                </span>
-                <p className="text-[11px] text-text-muted">
-                  Scans subfolders on your computer using local Git hashes and local README markdown files.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-1.5 text-xs text-emerald-400 font-mono">
-              <GitBranch className="w-3.5 h-3.5" />
-              <span>Local Git Enabled</span>
-            </div>
+        /* Local Directory Sync Controls */
+        <div className="p-4 rounded-xl border border-border-subtle bg-background-card space-y-4">
+          <div className="flex items-center space-x-2 text-xs font-mono text-text-secondary">
+            <FolderOpen className="w-4 h-4 text-legion-crimson" />
+            <span className="font-bold text-white uppercase tracking-wider">Local Projects Folder Scanner</span>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <input
-              type="text"
-              value={projectsDir}
-              onChange={(e) => setProjectsDir(e.target.value)}
-              className="flex-1 bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-text-primary focus:outline-none focus:border-legion-crimson"
-              placeholder="C:/Users/Legion/Documents/projects"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={projectsDir}
+                onChange={(e) => setProjectsDir(e.target.value)}
+                placeholder="C:\Users\aruld\OneDrive\Desktop\Projects"
+                className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
+              />
+            </div>
             <button
               onClick={handleLocalSync}
               disabled={isSyncing || !projectsDir.trim()}
-              className="px-4 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center space-x-1.5"
+              className="px-4 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center space-x-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
               <span>{isSyncing ? "Scanning..." : "Sync Local Folder"}</span>
@@ -421,6 +465,7 @@ export const ProjectSync: React.FC = () => {
               <thead className="bg-background-deep text-text-secondary border-b border-border-subtle text-[11px]">
                 <tr>
                   <th className="px-4 py-3">Project / Repository</th>
+                  <th className="px-4 py-3">Tech Stack & Timeline</th>
                   <th className="px-4 py-3">Live Demo URL</th>
                   <th className="px-4 py-3">Resume Status</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -442,6 +487,18 @@ export const ProjectSync: React.FC = () => {
                         </td>
 
                         <td className="px-4 py-3.5">
+                          <div className="space-y-1">
+                            <div className="text-[11px] text-zinc-300 font-sans line-clamp-1">
+                              {proj.tech_stack || "Software Engineering"}
+                            </div>
+                            <div className="inline-flex items-center space-x-1 px-1.5 py-0.5 rounded bg-zinc-800 border border-border-subtle text-[10px] text-amber-400">
+                              <Calendar className="w-2.5 h-2.5" />
+                              <span>{proj.timeline || "2024"}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5">
                           {proj.live_demo_url ? (
                             <a
                               href={proj.live_demo_url}
@@ -449,7 +506,7 @@ export const ProjectSync: React.FC = () => {
                               rel="noreferrer"
                               className="inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 hover:border-emerald-500 transition-colors"
                             >
-                              <span className="truncate max-w-[170px]">{proj.live_demo_url}</span>
+                              <span className="truncate max-w-[150px]">{proj.live_demo_url}</span>
                               <ExternalLink className="w-3 h-3 flex-shrink-0" />
                             </a>
                           ) : (
@@ -468,12 +525,23 @@ export const ProjectSync: React.FC = () => {
                             title={isHidden ? "Click to include in resume" : "Click to hide from resume"}
                           >
                             {isHidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                            <span>{isHidden ? "Hidden from Resume" : "Active on Resume"}</span>
+                            <span>{isHidden ? "Hidden" : "Active"}</span>
                           </button>
                         </td>
 
                         <td className="px-4 py-3.5 text-right">
-                          <div className="inline-flex items-center space-x-2">
+                          <div className="inline-flex items-center space-x-1.5">
+                            {/* Edit Project Button */}
+                            <button
+                              onClick={() => handleOpenEdit(proj)}
+                              className="flex items-center space-x-1 text-[11px] font-mono text-zinc-300 hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 transition-colors"
+                              title="Edit Tech Stack, Timeline & Bullets"
+                            >
+                              <Edit3 className="w-3 h-3 text-amber-400" />
+                              <span>Edit</span>
+                            </button>
+
+                            {/* View Bullets Button */}
                             <button
                               onClick={() => setExpandedSummary(isExpanded ? null : proj.directory_name)}
                               className="flex items-center space-x-1 text-[11px] font-mono text-text-secondary hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 transition-colors"
@@ -483,6 +551,7 @@ export const ProjectSync: React.FC = () => {
                               {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                             </button>
 
+                            {/* Delete Button */}
                             <button
                               onClick={() => handleDeleteProject(proj)}
                               className="p-1.5 rounded text-text-muted hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
@@ -497,7 +566,7 @@ export const ProjectSync: React.FC = () => {
                       {/* Expandable Project Highlights Drawer */}
                       {isExpanded && (
                         <tr className="bg-background-deep/80 border-b border-border-subtle">
-                          <td colSpan={4} className="p-4">
+                          <td colSpan={5} className="p-4">
                             <div className="p-3.5 rounded-lg bg-background-card border border-border-subtle space-y-2">
                               <div className="text-xs font-bold text-white uppercase flex items-center space-x-1.5">
                                 <Sparkles className="w-3.5 h-3.5 text-legion-crimson" />
@@ -518,6 +587,105 @@ export const ProjectSync: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Project Details Modal */}
+      {editingProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-background-card border border-border-subtle rounded-xl shadow-2xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
+              <div className="flex items-center space-x-2">
+                <Edit3 className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-bold font-mono text-white">
+                  Edit Project Details: <span className="text-legion-crimson">{editingProject.directory_name}</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingProject(null)}
+                className="p-1 rounded text-text-muted hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* Tech Stack */}
+              <div>
+                <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                  Tech Stack (Comma-separated for resume header)
+                </label>
+                <input
+                  type="text"
+                  value={editTechStack}
+                  onChange={(e) => setEditTechStack(e.target.value)}
+                  placeholder="e.g. Next.js, React, TypeScript, Tailwind CSS, PostgreSQL"
+                  className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
+                />
+              </div>
+
+              {/* Timeline & Live Demo Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                    Timeline (e.g. Oct 2024 – Dec 2024)
+                  </label>
+                  <input
+                    type="text"
+                    value={editTimeline}
+                    onChange={(e) => setEditTimeline(e.target.value)}
+                    placeholder="e.g. Oct 2024 – Nov 2024"
+                    className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                    Live Demo URL (For Word clickable hyperlink)
+                  </label>
+                  <input
+                    type="text"
+                    value={editLiveDemo}
+                    onChange={(e) => setEditLiveDemo(e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full bg-background-deep border border-border-subtle rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson"
+                  />
+                </div>
+              </div>
+
+              {/* Engineering Highlights / Bullets */}
+              <div>
+                <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
+                  FAANG Engineering Highlights (1 bullet per line)
+                </label>
+                <textarea
+                  value={editBulletsText}
+                  onChange={(e) => setEditBulletsText(e.target.value)}
+                  rows={5}
+                  placeholder="Accomplished [X] as measured by [Y], by doing [Z]..."
+                  className="w-full bg-background-deep border border-border-subtle rounded p-3 text-xs font-mono text-white focus:outline-none focus:border-legion-crimson resize-y leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-border-subtle">
+              <button
+                onClick={() => setEditingProject(null)}
+                className="px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-text-secondary hover:text-white text-xs font-mono transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+                className="px-4 py-1.5 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all flex items-center space-x-1.5 disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingEdit ? "Saving..." : "Save Project Details"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

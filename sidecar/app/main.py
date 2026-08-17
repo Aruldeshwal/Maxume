@@ -171,6 +171,28 @@ async def delete_project(project_id: int):
         raise HTTPException(status_code=404, detail="Project not found")
     return {"status": "ok", "deleted_project_id": project_id}
 
+class ProjectUpdateRequest(BaseModel):
+    tech_stack: Optional[str] = None
+    timeline: Optional[str] = None
+    live_demo_url: Optional[str] = None
+    bullets: Optional[List[str]] = None
+    summary_markdown: Optional[str] = None
+
+@app.put("/api/projects/{project_id}")
+async def update_project(project_id: int, payload: ProjectUpdateRequest):
+    """Updates a project's custom tech stack, timeline, live demo URL, and bullets."""
+    success = db.update_project_custom_fields(
+        project_id=project_id,
+        tech_stack=payload.tech_stack,
+        timeline=payload.timeline,
+        live_demo_url=payload.live_demo_url,
+        bullets=payload.bullets,
+        summary_markdown=payload.summary_markdown
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"status": "ok", "project_id": project_id}
+
 @app.post("/api/projects")
 async def upsert_project(payload: ProjectUpsertRequest):
     """Upsert project details to local SQLite database."""
