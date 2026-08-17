@@ -181,7 +181,6 @@ def extract_comprehensive_tech_stack(
     Synthesizes the complete, authentic technical stack by querying GitHub Languages API,
     manifest dependencies (package.json, requirements.txt, Cargo.toml), and repository signals.
     """
-    # Special Handling for Maxume itself
     if repo_name.lower() == "maxume":
         return "Tauri v2, React, TypeScript, FastAPI, Python 3.13, SQLite, Tailwind CSS, Groq, Ollama"
 
@@ -196,7 +195,7 @@ def extract_comprehensive_tech_stack(
     # 2. Query GitHub Languages API for full language byte breakdown
     lang_api_url = f"https://api.github.com/repos/{clean_user}/{repo_name}/languages"
     try:
-        l_res = requests.get(lang_api_url, headers=headers, timeout=4.0)
+        l_res = requests.get(lang_api_url, headers=headers, timeout=1.5)
         if l_res.status_code == 200:
             lang_dict = l_res.json()
             for lang_name in lang_dict.keys():
@@ -230,30 +229,26 @@ def extract_comprehensive_tech_stack(
 def synthesize_high_impact_bullets_ai(
     repo_name: str,
     description: Optional[str],
-    language: str,
+    tech_stack: str,
     readme_text: str
 ) -> Optional[List[str]]:
     """
     Uses Groq (Llama 3.3 70B), Gemini 2.5 Flash, or local Ollama to synthesize elite,
-    Google XYZ-formula resume bullet points with concrete metrics, architectural depth, and zero fluff.
+    codebase-grounded architectural resume bullet points with zero fabricated percentage numbers.
     """
     prompt = (
-        "You are a Principal Technical Resume Architect and FAANG hiring strategist. "
-        "Analyze the provided repository details and craft exactly 3 to 4 standout, high-impact resume bullet points that immediately impress senior engineering hiring managers."
-        "\n\nSTRICT BULLET RULES FOR MAXIMUM IMPACT:\n"
-        "1. GOOGLE XYZ FORMULA: Structure each bullet as 'Accomplished [X] as measured by [Y], by doing [Z]'.\n"
-        "2. POWER ACTION VERBS: Begin every bullet with a strong verb: Architected, Engineered, Spearheaded, Implemented, Scaled, Optimized, Orchestrated.\n"
-        "3. ARCHITECTURAL DEPTH & REALISTIC METRICS: Emphasize concrete engineering specifics:\n"
-        "   • Performance: e.g., 'reducing P95 API latency by 42%', 'slashing page load times by 35% through SSR and incremental static regeneration'.\n"
-        "   • Concurrency & Scale: e.g., 'supporting 10k+ concurrent active users with 99.9% uptime', 'handling high-throughput data streams via Redis caching and queue decoupling'.\n"
-        "   • Reliability & Security: e.g., 'eliminating race conditions and double-booking states via atomic database transactions', 'securing endpoints with OAuth2/JWT and granular RBAC'.\n"
-        "   • Data Architecture: e.g., 'structuring PostgreSQL schema with optimized B-tree indexing to reduce query execution time by 60%'.\n"
-        "4. ABSOLUTELY NO PASSIVE FLUFF: Never say 'Worked on', 'Helped build', 'Used React to make a website', or generic descriptions.\n"
+        "You are a Senior Principal Software Architect and FAANG hiring manager. "
+        "Analyze the provided repository details and write exactly 3 to 4 standout, high-impact resume bullet points that immediately impress senior engineering interviewers."
+        "\n\nSTRICT GROUNDED ENGINEERING BULLET GUIDELINES:\n"
+        "1. TECHNICAL RIGOR & AUTHENTIC ARCHITECTURE: Focus on actual engineering decisions, system design patterns, concurrency safety, data integrity, and protocol mechanisms.\n"
+        "2. REFERENCE DETECTED TECHNOLOGIES: Seamlessly incorporate the specific frameworks, databases, and libraries detected (e.g. Prisma, Socket.io, Zustand, FastAPI, Tailwind CSS, PostgreSQL, Clerk, MongoDB, Tauri).\n"
+        "3. ZERO FAKE PERCENTAGES / FABRICATED TRAFFIC: DO NOT invent artificial percentage metrics (e.g. 'reduced latency by 35%') or fake traffic loads (e.g. '10,000 concurrent users') unless explicitly stated in the README.\n"
+        "4. POWER ACTION VERBS: Begin every bullet with a strong engineering verb: Architected, Engineered, Implemented, Designed, Spearheaded, Constructed, Optimized, Orchestrated.\n"
         "5. Output ONLY a valid JSON array of 3-4 strings (bullet points), nothing else.\n\n"
-        f"REPOSITORY: {repo_name}\n"
+        f"PROJECT NAME: {repo_name}\n"
+        f"DETECTED TECH STACK: {tech_stack}\n"
         f"DESCRIPTION: {description or 'N/A'}\n"
-        f"PRIMARY TECH: {language}\n"
-        f"README DOCUMENTATION:\n{readme_text[:3000]}"
+        f"README EXCERPT:\n{readme_text[:2500]}"
     )
 
     # 1. Try Groq if GROQ_API_KEY is configured
@@ -265,13 +260,13 @@ def synthesize_high_impact_bullets_ai(
             payload = {
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {"role": "system", "content": "You are a Principal FAANG Resume Architect. Output ONLY a valid JSON array of 3-4 elite, metric-backed resume bullet points."},
+                    {"role": "system", "content": "You are a Principal FAANG Resume Architect. Output ONLY a valid JSON array of 3-4 grounded, technically rigorous resume bullet points with zero fake percentages."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.25,
                 "max_tokens": 1024
             }
-            res = requests.post(groq_url, headers=headers, json=payload, timeout=6.0)
+            res = requests.post(groq_url, headers=headers, json=payload, timeout=3.5)
             if res.status_code == 200:
                 text = res.json()["choices"][0]["message"]["content"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -290,7 +285,7 @@ def synthesize_high_impact_bullets_ai(
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1024}
             }
-            res = requests.post(g_url, json=payload, timeout=7.0)
+            res = requests.post(g_url, json=payload, timeout=4.0)
             if res.status_code == 200:
                 text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -326,22 +321,57 @@ def extract_project_bullet_points(
     readme_text: str,
     description: Optional[str],
     repo_name: str,
+    tech_stack: str,
     language: str
 ) -> List[str]:
-    """Extracts or synthesizes elite FAANG-standard engineering highlights."""
-    ai_bullets = synthesize_high_impact_bullets_ai(repo_name, description, language, readme_text)
+    """
+    Extracts or synthesizes elite, codebase-grounded engineering highlights.
+    Combines AI synthesis with pattern-specific architectural fallbacks.
+    """
+    ai_bullets = synthesize_high_impact_bullets_ai(repo_name, description, tech_stack, readme_text)
     if ai_bullets and len(ai_bullets) >= 2:
         return ai_bullets
 
-    # Architectural rule-based fallback
+    # Grounded Architectural Fallbacks based on detected technologies
     name_clean = repo_name.replace("-", " ").replace("_", " ").title()
-    desc_clean = description.strip() if description else f"{name_clean} full-stack software application"
+    stack_lower = tech_stack.lower()
+    bullets = []
 
-    bullets = [
-        f"Architected {name_clean} using {language}, {desc_clean.lower().rstrip('.')}, reducing end-to-end task execution latency by 35%.",
-        f"Engineered high-throughput service layer supporting 10k+ concurrent active sessions with 99.9% uptime and zero unhandled race conditions.",
-        f"Optimized relational data access and state synchronization pipelines, slashing database query overhead by 40%."
-    ]
+    # Maxume specific
+    if repo_name.lower() == "maxume":
+        return [
+            "Architected local-first desktop application with Tauri v2, React, TypeScript, and FastAPI, orchestrating asynchronous IPC sidecar communication and background subprocess lifecycles.",
+            "Engineered zero-cost multi-model AI pipeline leveraging Groq (Llama 3.3), Gemini Flash OCR, and local Ollama with automatic fallback routing and stream recovery.",
+            "Constructed automated DOCX compilation engine utilizing python-docx and raw OXML manipulation to inject clickable hyperlinks, dynamic tech stacks, and calibrated 1-page formatting."
+        ]
+
+    # Real-Time / WebSockets
+    if "socket.io" in stack_lower or "websocket" in stack_lower:
+        bullets.append(f"Spearheaded bidirectional real-time communication pipeline using Socket.io with room multiplexing, ensuring immediate state synchronization across connected clients.")
+
+    # Relational Database / ORM
+    if "prisma" in stack_lower or "postgresql" in stack_lower or "sqlite" in stack_lower:
+        bullets.append(f"Designed normalized relational database schema with Prisma ORM and PostgreSQL, enforcing foreign key integrity, automated migrations, and compound indexed query lookups.")
+    elif "mongodb" in stack_lower or "mongoose" in stack_lower:
+        bullets.append(f"Implemented document data model in MongoDB with atomic query operations and schema validation to enforce strict data consistency across user transactions.")
+
+    # Authentication & Security
+    if "clerk" in stack_lower or "auth" in stack_lower or "jwt" in stack_lower:
+        bullets.append(f"Engineered secure authentication workflow utilizing protected route middleware guards, session token validation, and granular role-based access control.")
+
+    # Frontend State Management & UI
+    if "next.js" in stack_lower or "react" in stack_lower:
+        bullets.append(f"Constructed responsive user interface using {tech_stack.split(',')[0]} and Tailwind CSS, implementing client-side state caching and optimistic UI mutations for instant feedback.")
+
+    # Machine Learning / Data Science
+    if "streamlit" in stack_lower or "scikit" in stack_lower or "torch" in stack_lower:
+        bullets.append(f"Constructed end-to-end NLP classification pipeline using Scikit-Learn and NLTK, executing text preprocessing, TF-IDF vectorization, and interactive Streamlit dashboard analytics.")
+
+    # General Fallbacks
+    if len(bullets) < 3:
+        bullets.append(f"Architected full-stack architecture for {name_clean} utilizing {tech_stack}, structuring decoupled service layers and clean RESTful API endpoint boundaries.")
+    if len(bullets) < 3:
+        bullets.append(f"Optimized data serialization and client-side rendering performance, eliminating redundant network round-trips across application routes.")
 
     return bullets[:4]
 
@@ -419,8 +449,14 @@ def sync_github_profile_repositories(
             headers=headers
         )
 
-        # 4. Generate high-impact bullet points
-        bullet_points = extract_project_bullet_points(readme_text, description, repo_name, language)
+        # 4. Generate grounded architectural bullet points
+        bullet_points = extract_project_bullet_points(
+            readme_text=readme_text,
+            description=description,
+            repo_name=repo_name,
+            tech_stack=tech_stack_brief,
+            language=language
+        )
         
         # Build clean markdown summary
         bullets_formatted = "\n".join(f"- {b}" for b in bullet_points)
