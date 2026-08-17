@@ -104,12 +104,52 @@ class Database:
                 pass
             conn.commit()
 
-    # --- Project SSOT Operations ---
     def get_project_by_path(self, directory_path: str) -> Optional[Dict[str, Any]]:
         with self.get_connection() as conn:
             cursor = conn.execute("SELECT * FROM projects WHERE directory_path = ?", (directory_path,))
             row = cursor.fetchone()
-            return dict(row) if row else None
+            return self._enrich_project_metadata(dict(row)) if row else None
+
+    def _enrich_project_metadata(self, proj: Dict[str, Any]) -> Dict[str, Any]:
+        """Parses bullets, tech stack, timeline, and live demo out of summary_markdown."""
+        summary = proj.get("summary_markdown") or ""
+        import re
+        
+        # 1. Extract bullets under Engineering Highlights
+        bullets = []
+        in_highlights = False
+        for line in summary.splitlines():
+            stripped = line.strip()
+            if any(h in stripped for h in ["## Engineering Highlights", "## Highlights", "## Key Capabilities", "## Features"]):
+                in_highlights = True
+                continue
+            if in_highlights:
+                if stripped.startswith("#") and not stripped.startswith("###"):
+                    break
+                if stripped.startswith(("-", "*", "•")):
+                    clean = re.sub(r'^[-*•\s]+', '', stripped).replace('**', '').strip()
+                    if len(clean) > 10 and not clean.startswith("http"):
+                        bullets.append(clean)
+
+        proj["bullets"] = bullets
+
+        # 2. Extract tech stack
+        m_tech = re.search(r'\*\*Tech Stack\*\*:\s*([^\n]+)', summary)
+        if m_tech:
+            proj["tech_stack"] = m_tech.group(1).strip()
+
+        # 3. Extract timeline
+        m_time = re.search(r'\*\*Timeline\*\*:\s*([^\n]+)', summary)
+        if m_time:
+            proj["timeline"] = m_time.group(1).strip()
+            proj["date"] = m_time.group(1).strip()
+
+        # 4. Extract live demo URL
+        m_demo = re.search(r'\*\*Live Demo\*\*:\s*(https?://[^\s\n]+)', summary)
+        if m_demo and not proj.get("live_demo_url"):
+            proj["live_demo_url"] = m_demo.group(1).strip()
+
+        return proj
 
     def list_projects(self, include_hidden: bool = True) -> List[Dict[str, Any]]:
         with self.get_connection() as conn:
@@ -117,7 +157,7 @@ class Database:
                 cursor = conn.execute("SELECT * FROM projects ORDER BY is_hidden ASC, directory_name ASC")
             else:
                 cursor = conn.execute("SELECT * FROM projects WHERE is_hidden = 0 ORDER BY directory_name ASC")
-            return [dict(row) for row in cursor.fetchall()]
+            return [self._enrich_project_metadata(dict(row)) for row in cursor.fetchall()]
 
     def toggle_project_visibility(self, project_id: int, is_hidden: Optional[int] = None) -> bool:
         """Toggles or sets project visibility (is_hidden: 1 = hidden from resume, 0 = visible)."""

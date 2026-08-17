@@ -56,22 +56,26 @@ def synthesize_high_impact_bullets_ai(
     readme_text: str
 ) -> Optional[List[str]]:
     """
-    Uses local Ollama or cloud LLM to synthesize elite, Google XYZ-formula resume bullet points:
-    'Accomplished [X] as measured by [Y], by doing [Z]'
+    Uses Groq (Llama 3.3 70B), Gemini 2.5 Flash, or local Ollama to synthesize elite,
+    Google XYZ-formula resume bullet points with concrete metrics, architectural depth, and zero fluff.
     """
     prompt = (
-        "You are an elite Staff Software Engineer and FAANG resume strategist. "
-        "Analyze the provided GitHub repository documentation and craft exactly 3 to 4 standout, high-impact resume bullet points. "
-        "\n\nSTRICT BULLET POINT RULES:\n"
-        "1. Follow Google's XYZ formula: 'Accomplished [X] as measured by [Y], by doing [Z]'.\n"
-        "2. Start every bullet with a strong power action verb (e.g. Architected, Engineered, Implemented, Optimized, Streamlined, Scaled).\n"
-        "3. Focus on concrete architectural choices (e.g., concurrency models, distributed state, caching layers, async I/O, schema design, latency reduction, throughput, fault tolerance).\n"
-        "4. DO NOT write passive fluff like 'Used React to make a website' or 'Wrote Python code'.\n"
+        "You are a Principal Technical Resume Architect and FAANG hiring strategist. "
+        "Analyze the provided repository details and craft exactly 3 to 4 standout, high-impact resume bullet points that immediately impress senior engineering hiring managers."
+        "\n\nSTRICT BULLET RULES FOR MAXIMUM IMPACT:\n"
+        "1. GOOGLE XYZ FORMULA: Structure each bullet as 'Accomplished [X] as measured by [Y], by doing [Z]'.\n"
+        "2. POWER ACTION VERBS: Begin every bullet with a strong verb: Architected, Engineered, Spearheaded, Implemented, Scaled, Optimized, Orchestrated.\n"
+        "3. ARCHITECTURAL DEPTH & REALISTIC METRICS: Emphasize concrete engineering specifics:\n"
+        "   • Performance: e.g., 'reducing P95 API latency by 42%', 'slashing page load times by 35% through SSR and incremental static regeneration'.\n"
+        "   • Concurrency & Scale: e.g., 'supporting 10k+ concurrent active users with 99.9% uptime', 'handling high-throughput data streams via Redis caching and queue decoupling'.\n"
+        "   • Reliability & Security: e.g., 'eliminating race conditions and double-booking states via atomic database transactions', 'securing endpoints with OAuth2/JWT and granular RBAC'.\n"
+        "   • Data Architecture: e.g., 'structuring PostgreSQL schema with optimized B-tree indexing to reduce query execution time by 60%'.\n"
+        "4. ABSOLUTELY NO PASSIVE FLUFF: Never say 'Worked on', 'Helped build', 'Used React to make a website', or generic descriptions.\n"
         "5. Output ONLY a valid JSON array of 3-4 strings (bullet points), nothing else.\n\n"
         f"REPOSITORY: {repo_name}\n"
         f"DESCRIPTION: {description or 'N/A'}\n"
         f"PRIMARY TECH: {language}\n"
-        f"README CONTENT:\n{readme_text[:2500]}"
+        f"README DOCUMENTATION:\n{readme_text[:3000]}"
     )
 
     # 1. Try Groq if GROQ_API_KEY is configured (fastest inference ~300ms)
@@ -83,13 +87,13 @@ def synthesize_high_impact_bullets_ai(
             payload = {
                 "model": "llama-3.3-70b-versatile",
                 "messages": [
-                    {"role": "system", "content": "You are a FAANG technical resume writer. Output ONLY a JSON array of 3-4 high-impact resume bullet points."},
+                    {"role": "system", "content": "You are a Principal FAANG Resume Architect. Output ONLY a valid JSON array of 3-4 elite, metric-backed resume bullet points."},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.3,
+                "temperature": 0.25,
                 "max_tokens": 1024
             }
-            res = requests.post(groq_url, headers=headers, json=payload, timeout=4.0)
+            res = requests.post(groq_url, headers=headers, json=payload, timeout=6.0)
             if res.status_code == 200:
                 text = res.json()["choices"][0]["message"]["content"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -106,9 +110,9 @@ def synthesize_high_impact_bullets_ai(
             gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
+                "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1024}
             }
-            res = requests.post(gemini_url, json=payload, timeout=4.0)
+            res = requests.post(gemini_url, json=payload, timeout=6.0)
             if res.status_code == 200:
                 text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -118,7 +122,7 @@ def synthesize_high_impact_bullets_ai(
         except Exception:
             pass
 
-    # 3. Try local Ollama if running (allows enough time for cold model loading into VRAM)
+    # 3. Try local Ollama if running
     try:
         ollama_url = "http://127.0.0.1:11434/api/generate"
         res = requests.post(
@@ -127,7 +131,7 @@ def synthesize_high_impact_bullets_ai(
                 "model": "qwen2.5:7b-instruct",
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0.3}
+                "options": {"temperature": 0.25}
             },
             timeout=(1.0, 30.0)
         )
