@@ -502,8 +502,8 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     # 7. Employee Networking Discovery
     contacts = await lookup_company_employees(
         company_name=company_clean,
-        company_url=req.company_url,
-        company_domain=req.company_domain
+        company_url=payload.company_url,
+        company_domain=payload.company_domain
     )
 
     # 8. SQLite Database Persistence
