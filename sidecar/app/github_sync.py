@@ -118,7 +118,7 @@ def synthesize_high_impact_bullets_ai(
         except Exception:
             pass
 
-    # 3. Try local Ollama if running (short 0.5s connection timeout)
+    # 3. Try local Ollama if running (allows enough time for cold model loading into VRAM)
     try:
         ollama_url = "http://127.0.0.1:11434/api/generate"
         res = requests.post(
@@ -129,7 +129,7 @@ def synthesize_high_impact_bullets_ai(
                 "stream": False,
                 "options": {"temperature": 0.3}
             },
-            timeout=(0.5, 4.0)
+            timeout=(1.0, 30.0)
         )
         if res.status_code == 200:
             resp_text = res.json().get("response", "")
