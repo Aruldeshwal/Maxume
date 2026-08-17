@@ -133,12 +133,16 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                if let Some(state) = window.try_state::<SidecarState>() {
-                    if let Ok(mut guard) = state.0.lock() {
-                        let _ = guard.take();
+            match event {
+                tauri::WindowEvent::CloseRequested { .. } | tauri::WindowEvent::Destroyed => {
+                    kill_stale_backend_processes();
+                    if let Some(state) = window.try_state::<SidecarState>() {
+                        if let Ok(mut guard) = state.0.lock() {
+                            let _ = guard.take();
+                        }
                     }
                 }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
