@@ -6,7 +6,18 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 from contextlib import contextmanager
 
-DEFAULT_DB_PATH = os.environ.get("MAXUME_DB_PATH", "maxume_local.db")
+def _resolve_default_db_path() -> str:
+    explicit = os.environ.get("MAXUME_DB_PATH")
+    if explicit:
+        return explicit
+    if os.path.exists("maxume_local.db"):
+        return os.path.abspath("maxume_local.db")
+    app_data = os.environ.get("APPDATA", os.path.expanduser("~"))
+    maxume_dir = os.path.join(app_data, "Maxume")
+    os.makedirs(maxume_dir, exist_ok=True)
+    return os.path.join(maxume_dir, "maxume_local.db")
+
+DEFAULT_DB_PATH = _resolve_default_db_path()
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;

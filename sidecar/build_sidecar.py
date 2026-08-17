@@ -2,6 +2,7 @@
 
 import os
 import sys
+import time
 import subprocess
 import shutil
 import platform
@@ -17,7 +18,7 @@ def get_target_triple() -> str:
     
     machine = platform.machine().lower()
     system = platform.system().lower()
-    if system == "windows":
+    if system == "windows" or os.name == "nt":
         return f"{machine}-pc-windows-msvc"
     elif system == "darwin":
         return f"{machine}-apple-darwin"
@@ -45,16 +46,31 @@ def build():
     subprocess.check_call(cmd, cwd=current_dir)
 
     dist_dir = os.path.abspath(os.path.join(current_dir, "dist"))
-    exe_suffix = ".exe" if platform.system() == "windows" else ""
+    is_win = platform.system().lower() == "windows" or os.name == "nt"
+    exe_suffix = ".exe" if is_win else ""
     built_binary = os.path.join(dist_dir, f"maxume_backend{exe_suffix}")
     
-    # Tauri expects externalBin at `src-tauri/binaries/maxume_backend-<triple>.exe` or relative path configured
+    # Tauri expects externalBin at `src-tauri/binaries/maxume_backend-<triple>.exe`
     binaries_dir = os.path.abspath(os.path.join(os.path.dirname(current_dir), "src-tauri", "binaries"))
     os.makedirs(binaries_dir, exist_ok=True)
-    
     target_binary = os.path.join(binaries_dir, f"maxume_backend-{target_triple}{exe_suffix}")
-    shutil.copy2(built_binary, target_binary)
-    print(f"Successfully packaged sidecar binary to: {target_binary}")
+
+    print(f"Transferring {built_binary} -> {target_binary} ...")
+    time.sleep(1.0)
+
+    # Copy binary using raw chunked streams for Windows / OneDrive filesystem safety
+    for attempt in range(5):
+        try:
+            with open(built_binary, "rb") as f_src:
+                with open(target_binary, "wb") as f_dst:
+                    while chunk := f_src.read(1024 * 1024):
+                        f_dst.write(chunk)
+            print(f"Successfully packaged sidecar binary to: {target_binary}")
+            break
+        except Exception as err:
+            if attempt == 4:
+                raise err
+            time.sleep(1.0)
 
 if __name__ == "__main__":
     build()

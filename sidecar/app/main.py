@@ -2,6 +2,7 @@
 
 import os
 import sys
+import asyncio
 import logging
 from typing import Optional, List, Dict, Any, Union
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
@@ -18,7 +19,19 @@ sidecar_dir = os.path.dirname(current_dir)
 if sidecar_dir not in sys.path:
     sys.path.insert(0, sidecar_dir)
 
-load_dotenv(os.path.join(sidecar_dir, ".env"))
+# Multi-location .env loader for standalone desktop and dev environments
+candidate_env_paths = [
+    os.path.join(os.getcwd(), ".env"),
+    os.path.join(os.getcwd(), "sidecar", ".env"),
+    os.path.join(os.path.dirname(sys.executable), ".env"),
+    os.path.join(os.path.dirname(sys.executable), "sidecar", ".env"),
+    os.path.join(sidecar_dir, ".env"),
+    os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "Maxume", ".env"),
+    r"C:\Users\aruld\OneDrive\Desktop\Maxume\sidecar\.env"
+]
+for ep in candidate_env_paths:
+    if os.path.exists(ep):
+        load_dotenv(ep)
 
 from app.database import db
 from app.git_watcher import GitWatcher
@@ -193,16 +206,25 @@ class GitHubProfileSyncRequest(BaseModel):
     token: Optional[str] = None
 
 @app.post("/api/projects/github-sync")
+@app.post("/api/github/sync")
 async def sync_github_profile(payload: GitHubProfileSyncRequest):
     """Fetches public repositories from GitHub profile, extracts README docs & live URLs, and saves to SSOT."""
     try:
-        results = sync_github_profile_repositories(
-            username=payload.username,
-            token=payload.token,
-            database=db
+        results = await asyncio.to_thread(
+            sync_github_profile_repositories,
+            payload.username,
+            payload.token,
+            db
         )
-        return {"status": "ok", "username": payload.username, "results": results}
+        return {
+            "status": "ok",
+            "username": payload.username,
+            "total_synced": len(results),
+            "results": results,
+            "projects": results
+        }
     except Exception as e:
+        logger.error(f"GitHub sync error: {e}", exc_info=True)
         raise HTTPException(status_code=400, detail=str(e))
 
 # Applications History Logs
@@ -526,4 +548,4 @@ async def optimize_application(payload: OptimizeApplicationRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, reload=False)

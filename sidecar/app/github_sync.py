@@ -74,29 +74,7 @@ def synthesize_high_impact_bullets_ai(
         f"README CONTENT:\n{readme_text[:2500]}"
     )
 
-    # 1. Try local Ollama if available
-    try:
-        ollama_url = "http://127.0.0.1:11434/api/generate"
-        res = requests.post(
-            ollama_url,
-            json={
-                "model": "qwen2.5:7b-instruct",
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.3}
-            },
-            timeout=8.0
-        )
-        if res.status_code == 200:
-            resp_text = res.json().get("response", "")
-            clean_json = re.sub(r'^```json\s*|\s*```$', '', resp_text.strip(), flags=re.MULTILINE)
-            bullets = json.loads(clean_json)
-            if isinstance(bullets, list) and len(bullets) >= 2:
-                return [b.lstrip("•-* ") for b in bullets[:4]]
-    except Exception:
-        pass
-
-    # 2. Try Groq if GROQ_API_KEY is configured
+    # 1. Try Groq if GROQ_API_KEY is configured (fastest inference ~300ms)
     groq_key = os.environ.get("GROQ_API_KEY")
     if groq_key:
         try:
@@ -111,7 +89,7 @@ def synthesize_high_impact_bullets_ai(
                 "temperature": 0.3,
                 "max_tokens": 1024
             }
-            res = requests.post(groq_url, headers=headers, json=payload, timeout=8.0)
+            res = requests.post(groq_url, headers=headers, json=payload, timeout=4.0)
             if res.status_code == 200:
                 text = res.json()["choices"][0]["message"]["content"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -121,7 +99,7 @@ def synthesize_high_impact_bullets_ai(
         except Exception:
             pass
 
-    # 3. Try Gemini if GEMINI_API_KEY is configured
+    # 2. Try Gemini if GEMINI_API_KEY is configured
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         try:
@@ -130,7 +108,7 @@ def synthesize_high_impact_bullets_ai(
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
             }
-            res = requests.post(gemini_url, json=payload, timeout=8.0)
+            res = requests.post(gemini_url, json=payload, timeout=4.0)
             if res.status_code == 200:
                 text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
                 clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
@@ -139,6 +117,28 @@ def synthesize_high_impact_bullets_ai(
                     return [b.lstrip("•-* ") for b in bullets[:4]]
         except Exception:
             pass
+
+    # 3. Try local Ollama if running (short 0.5s connection timeout)
+    try:
+        ollama_url = "http://127.0.0.1:11434/api/generate"
+        res = requests.post(
+            ollama_url,
+            json={
+                "model": "qwen2.5:7b-instruct",
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3}
+            },
+            timeout=(0.5, 4.0)
+        )
+        if res.status_code == 200:
+            resp_text = res.json().get("response", "")
+            clean_json = re.sub(r'^```json\s*|\s*```$', '', resp_text.strip(), flags=re.MULTILINE)
+            bullets = json.loads(clean_json)
+            if isinstance(bullets, list) and len(bullets) >= 2:
+                return [b.lstrip("•-* ") for b in bullets[:4]]
+    except Exception:
+        pass
 
     return None
 
