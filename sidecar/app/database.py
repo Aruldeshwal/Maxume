@@ -102,6 +102,19 @@ class Database:
                 conn.execute("ALTER TABLE projects ADD COLUMN is_hidden INTEGER DEFAULT 0;")
             except Exception:
                 pass
+
+            for col in [
+                "ALTER TABLE networking_contacts ADD COLUMN email_primary TEXT;",
+                "ALTER TABLE networking_contacts ADD COLUMN email_alternatives TEXT;",
+                "ALTER TABLE networking_contacts ADD COLUMN google_dork_url TEXT;",
+                "ALTER TABLE networking_contacts ADD COLUMN github_search_url TEXT;",
+                "ALTER TABLE networking_contacts ADD COLUMN twitter_search_url TEXT;"
+            ]:
+                try:
+                    conn.execute(col)
+                except Exception:
+                    pass
+
             conn.commit()
 
     def get_project_by_path(self, directory_path: str) -> Optional[Dict[str, Any]]:
@@ -281,30 +294,54 @@ class Database:
         profile_url: str,
         referral_message_draft: Optional[str] = None,
         referral_status: str = "Not Contacted",
+        email_primary: Optional[str] = None,
+        email_alternatives: Optional[Any] = None,
+        google_dork_url: Optional[str] = None,
+        github_search_url: Optional[str] = None,
+        twitter_search_url: Optional[str] = None,
     ) -> int:
+        import json
+        alt_str = json.dumps(email_alternatives) if isinstance(email_alternatives, list) else (email_alternatives or "")
         with self.get_connection() as conn:
             cursor = conn.execute(
                 """
                 INSERT INTO networking_contacts (
                     application_id, employee_name, employee_tagline,
-                    profile_url, referral_message_draft, referral_status
+                    profile_url, referral_message_draft, referral_status,
+                    email_primary, email_alternatives, google_dork_url,
+                    github_search_url, twitter_search_url
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING id;
                 """,
-                (application_id, employee_name, employee_tagline, profile_url, referral_message_draft, referral_status),
+                (
+                    application_id, employee_name, employee_tagline,
+                    profile_url, referral_message_draft, referral_status,
+                    email_primary, alt_str, google_dork_url,
+                    github_search_url, twitter_search_url
+                ),
             )
             row = cursor.fetchone()
             conn.commit()
             return row["id"]
 
     def list_networking_contacts(self, application_id: int) -> List[Dict[str, Any]]:
+        import json
         with self.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM networking_contacts WHERE application_id = ? ORDER BY scraped_at ASC",
                 (application_id,),
             )
-            return [dict(row) for row in cursor.fetchall()]
+            contacts = []
+            for row in cursor.fetchall():
+                d = dict(row)
+                if d.get("email_alternatives") and isinstance(d["email_alternatives"], str) and d["email_alternatives"].startswith("["):
+                    try:
+                        d["email_alternatives"] = json.loads(d["email_alternatives"])
+                    except Exception:
+                        pass
+                contacts.append(d)
+            return contacts
 
     # --- Company Research Signals ---
     def add_company_signal(

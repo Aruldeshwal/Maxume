@@ -87,6 +87,7 @@ class DocxRebuildRequest(BaseModel):
 class CompanyResearchRequest(BaseModel):
     company_name: str
     company_url: Optional[str] = None
+    company_domain: Optional[str] = None
     recency_days: Optional[int] = 90
     max_signals: Optional[int] = 5
 
@@ -94,6 +95,7 @@ class OptimizeApplicationRequest(BaseModel):
     company_name: Optional[str] = ""
     role_title: Optional[str] = ""
     company_url: Optional[str] = None
+    company_domain: Optional[str] = None
     jd_raw_text: Optional[str] = None
     screenshot_path: Optional[str] = None
     screenshot_base64: Optional[str] = None
@@ -261,6 +263,23 @@ async def get_application(app_id: int):
         "networking_contacts": contacts,
         "company_research_signals": signals
     }
+
+class EmployeeLookupRequest(BaseModel):
+    company_name: str
+    company_url: Optional[str] = None
+    company_domain: Optional[str] = None
+    num_results: Optional[int] = 4
+
+@app.post("/api/employees/lookup")
+async def lookup_employees_endpoint(payload: EmployeeLookupRequest):
+    """Direct lookup endpoint for real company employees and Hunter.io email synthesis."""
+    contacts = await lookup_company_employees(
+        company_name=payload.company_name,
+        company_url=payload.company_url,
+        company_domain=payload.company_domain,
+        num_results=payload.num_results or 4
+    )
+    return {"status": "ok", "contacts": contacts}
 
 # Docx Engine Rebuilding
 @app.post("/api/docx/rebuild")
@@ -481,7 +500,11 @@ async def optimize_application(payload: OptimizeApplicationRequest):
             pass
 
     # 7. Employee Networking Discovery
-    contacts = await lookup_company_employees(company_name=company_clean)
+    contacts = await lookup_company_employees(
+        company_name=company_clean,
+        company_url=req.company_url,
+        company_domain=req.company_domain
+    )
 
     # 8. SQLite Database Persistence
     app_id = db.create_application(
@@ -527,7 +550,12 @@ async def optimize_application(payload: OptimizeApplicationRequest):
             employee_tagline=c["employee_tagline"],
             profile_url=c["profile_url"],
             referral_message_draft=referral_pitch,
-            referral_status="Not Contacted"
+            referral_status="Not Contacted",
+            email_primary=c.get("email_primary"),
+            email_alternatives=c.get("email_alternatives"),
+            google_dork_url=c.get("google_dork_url"),
+            github_search_url=c.get("github_search_url"),
+            twitter_search_url=c.get("twitter_search_url"),
         )
         saved_contacts.append({
             **c,

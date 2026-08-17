@@ -17,18 +17,22 @@ Returns all indexed local and GitHub repositories.
   {
     "id": 1,
     "directory_name": "EzNotes",
-    "summary_markdown": "# EzNotes\n**Live Demo**: https://eznotes.onrender.com\n...",
-    "tech_stack": "TypeScript, Next.js, React",
-    "language": "TypeScript",
-    "live_demo_url": "https://eznotes.onrender.com",
+    "summary_markdown": "# EzNotes\n**Live Demo**: https://eznotes-pits.onrender.com/\n...",
+    "tech_stack": "Next.js, TypeScript, Node.js, PostgreSQL, Clerk",
+    "timeline": "2024 – Present",
+    "live_demo_url": "https://eznotes-pits.onrender.com/",
     "is_hidden": 0,
-    "last_commit_hash": "a1b2c3d4"
+    "bullets": [
+      "Architected a highly scalable Next.js application supporting 1M+ concurrent readers by decoupling Edge read path from PostgreSQL database, achieving 99.9% uptime and reducing P95 API latency by 42%",
+      "Engineered secure authentication with Clerk, eliminating race conditions via atomic database transactions and OAuth2/JWT with granular RBAC, ensuring 100% data integrity"
+    ],
+    "last_commit_hash": "2026-08-17"
   }
 ]
 ```
 
 ### `POST /api/github/sync`
-Syncs all public GitHub repositories for the configured username.
+Syncs all public GitHub repositories for the configured username using FAANG Principal Architect AI bullet synthesis.
 * **Request**:
 ```json
 {
@@ -40,7 +44,7 @@ Syncs all public GitHub repositories for the configured username.
 {
   "status": "ok",
   "username": "Aruldeshwal",
-  "total_synced": 12,
+  "total_synced": 13,
   "projects": [...]
 }
 ```
@@ -71,18 +75,17 @@ Permanently deletes a project from the SQLite database.
 ## 2. Optimization & Application Endpoints
 
 ### `POST /api/optimize`
-Processes job description text and/or screenshots, reranks top candidate projects, compiles single-page DOCX resume, performs company research, and generates referral outreach drafts.
+Processes job description text and/or screenshots, reranks top candidate projects, compiles single-page DOCX resume, performs company research, executes real employee discovery, generates Hunter.io-style predicted emails, and creates personalized referral pitches.
 * **Request**:
 ```json
 {
-  "company_name": "Google",
+  "company_name": "Meritshot",
   "role_title": "Software Engineer",
-  "company_url": "https://about.google",
-  "jd_text": "Looking for a full stack engineer with React, Next.js, and MongoDB experience...",
-  "jd_image_base64": "data:image/png;base64,iVBORw0KGgo...",
-  "jd_images_base64": ["data:image/png;base64,...", "..."],
-  "template_path": "Master_Resume.docx",
-  "output_dir": "./output"
+  "company_url": "https://meritshot.com/careers",
+  "company_domain": "@meritshot.com",
+  "jd_raw_text": "Looking for a full stack engineer with React, Next.js, and MongoDB experience...",
+  "screenshots_base64": ["data:image/png;base64,..."],
+  "personalization_enabled": true
 }
 ```
 * **Response**:
@@ -90,11 +93,11 @@ Processes job description text and/or screenshots, reranks top candidate project
 {
   "status": "ok",
   "application_id": 42,
-  "output_folder": "C:/Users/.../output/google",
-  "resume_path": "C:/Users/.../output/google/google_Resume.docx",
-  "cover_letter_path": "C:/Users/.../output/google/google_CoverLetter.txt",
-  "email_path": "C:/Users/.../output/google/google_Email.txt",
-  "cover_letter": "Dear Hiring Team at Google...",
+  "output_folder": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot",
+  "resume_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_Resume.docx",
+  "cover_letter_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_CoverLetter.txt",
+  "email_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_Email.txt",
+  "cover_letter": "Dear Hiring Team at Meritshot...",
   "outreach_email": "Subject: Application for Software Engineer...",
   "personalization_status": "Personalized",
   "research_brief": {
@@ -102,9 +105,9 @@ Processes job description text and/or screenshots, reranks top candidate project
     "signals": [
       {
         "signal_type": "product_launch",
-        "headline": "Google launches new AI features for developer ecosystem",
-        "source_url": "https://news.google.com/...",
-        "source_tier": 2,
+        "headline": "Meritshot launches new learning ecosystem",
+        "source_url": "https://meritshot.com/...",
+        "source_tier": 1,
         "guard_check_passed": true
       }
     ]
@@ -112,14 +115,52 @@ Processes job description text and/or screenshots, reranks top candidate project
   "networking_contacts": [
     {
       "id": 101,
-      "employee_name": "Google Senior Engineer / Tech Lead",
-      "employee_tagline": "Senior Software Engineer • Distributed Systems at Google",
-      "profile_url": "https://www.linkedin.com/search/results/people/?keywords=Google%20Software%20Engineer",
-      "referral_message_draft": "Hi Google Senior Engineer / Tech Lead, I came across your work...",
+      "employee_name": "Roshan Sharma",
+      "employee_tagline": "Founder & CEO at Meritshot",
+      "profile_url": "https://in.linkedin.com/in/rroshansharma",
+      "company_domain": "meritshot.com",
+      "email_primary": "roshan.sharma@meritshot.com",
+      "email_alternatives": ["roshan@meritshot.com", "rsharma@meritshot.com"],
+      "google_dork_url": "https://www.google.com/search?q=%22Roshan+Sharma%22+%28%22%40meritshot.com%22+OR+email%29",
+      "github_search_url": "https://github.com/search?q=Roshan+Sharma+type%3Ausers",
+      "twitter_search_url": "https://x.com/search?q=%22Roshan+Sharma%22+%22Meritshot%22",
+      "referral_message_draft": "Hi Roshan, I came across your work leading Meritshot...",
       "referral_status": "Not Contacted"
     }
   ],
   "ranked_projects": [...]
+}
+```
+
+### `POST /api/employees/lookup`
+Direct on-demand real employee lookup and Hunter.io email synthesizer.
+* **Request**:
+```json
+{
+  "company_name": "Meritshot",
+  "company_url": "https://meritshot.com",
+  "company_domain": "@meritshot.com",
+  "num_results": 4
+}
+```
+* **Response**:
+```json
+{
+  "status": "ok",
+  "contacts": [
+    {
+      "employee_name": "Roshan Sharma",
+      "employee_tagline": "Founder & CEO at Meritshot",
+      "profile_url": "https://in.linkedin.com/in/rroshansharma",
+      "company_domain": "meritshot.com",
+      "email_primary": "roshan.sharma@meritshot.com",
+      "email_alternatives": ["roshan@meritshot.com", "rsharma@meritshot.com"],
+      "google_dork_url": "https://www.google.com/search?q=%22Roshan+Sharma%22+%28%22%40meritshot.com%22+OR+email%29",
+      "github_search_url": "https://github.com/search?q=Roshan+Sharma+type%3Ausers",
+      "twitter_search_url": "https://x.com/search?q=%22Roshan+Sharma%22+%22Meritshot%22",
+      "referral_status": "Not Contacted"
+    }
+  ]
 }
 ```
 
@@ -143,13 +184,12 @@ Opens the target application output folder or Word document directly in Windows 
 * **Request**:
 ```json
 {
-  "folder_path": "C:/Users/.../output/google"
+  "path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_Resume.docx"
 }
 ```
 * **Response**:
 ```json
 {
-  "status": "ok",
-  "opened_path": "C:/Users/.../output/google"
+  "status": "ok"
 }
 ```

@@ -1,7 +1,7 @@
 # Project Overview & Single Source of Truth (SSOT)
 
 ## 1. Executive Summary
-**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, formats concise tech stacks and timelines, enforces strict single-page limits with adaptive bullet filling, and personalizes application materials with verified company news and referral contacts.
+**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, formats concise tech stacks and timelines, enforces strict single-page limits with adaptive bullet filling, synthesizes Hunter.io-style verified corporate emails, and personalizes application materials with verified company news and multi-channel referral contacts.
 
 ---
 
@@ -10,7 +10,7 @@
 ```mermaid
 graph TD
     A[Local Codebase / GitHub Sync] -->|Incremental Git Watcher| B[(SQLite Local SSOT)]
-    B -->|XYZ Formula Bullet Synthesizer| C[AI Engineering Highlights]
+    B -->|FAANG Principal Architect AI Synthesizer| C[High-Impact Engineering Highlights]
     D[Target Job Description / Screenshots] -->|Gemini Multimodal OCR| E[JD Parser & Project Reranker]
     C --> F[DocxEngine]
     E --> F
@@ -18,12 +18,12 @@ graph TD
     F -->|OXML Hyperlinks + Tech Stack + Timeline| G[Single-Page Master_Resume.docx]
     D -->|Real-Time News RSS Wire| H[Company Research Signals]
     H -->|3-Stage Containment Guard| I[Personalized Cover Letter & Outreach]
-    D -->|Targeted Persona Engine| J[LinkedIn Referral Contacts & Drafts]
+    D -->|Real Person Discovery & Hunter.io Engine| J[Multi-Channel Outreach & Email Synthesizer]
 ```
 
 ### Pillar 1: Project Knowledge Base (SSOT)
 - **Watcher & GitHub Sync**: Tracks local repository folders and GitHub profile repos (`@Aruldeshwal`).
-- **AI Bullet Generation**: Synthesizes engineering bullet points using Google's XYZ formula (*Accomplished [X] as measured by [Y], by doing [Z]*).
+- **FAANG Principal Architect AI Bullets**: Synthesizes Google XYZ-formula engineering bullet points (*Accomplished [X] as measured by [Y], by doing [Z]*) with concrete architectural metrics (latency reduction, scale/concurrency, atomic transactions, query indexing).
 - **Live Demo & Timeline Extraction**: Automatically extracts live URLs and computes active project timelines (e.g. `Oct 2024 – Dec 2024`).
 - **Visibility Toggle**: Supports marking repositories as `Active on Resume` or `Hidden from Resume` to keep non-relevant repos off the resume.
 
@@ -39,10 +39,12 @@ graph TD
 - **ATS Categorization**: Formats skills into *Programming Languages*, *Frameworks & Libraries*, *Databases & DevOps*, and *Core Competencies & AI*.
 - **JD Alignment**: Dynamically prioritizes skills matching the target job description to the front of each category.
 
-### Pillar 4: Real-Time Signal Research & Networking Hub
+### Pillar 4: Real-Time Signal Research & Multi-Channel Networking Hub
 - **Real-Time News Wire**: Aggregates real-time news, launches, and funding rounds from Google News RSS and direct company announcements.
 - **3-Stage Hallucination Containment**: Deterministic verification (`passes_containment_check`) rejects ungrounded claims.
-- **Targeted Referral Outreach**: Builds targeted LinkedIn referral search personas (*Tech Leads*, *Engineering Managers*, *Tech Recruiters*) with tailored 75-word outreach pitches.
+- **Real Person Discovery**: Queries public search streams to find actual current employees and leaders with exact personal `/in/` LinkedIn profiles (no generic search filler).
+- **Hunter.io-Style Email Engine**: Generates corporate email permutations (`first.last@company.com`, `first@company.com`, `f.last@company.com`) from the company domain with 1-click copy and pre-filled `mailto:` compose links.
+- **Multi-Channel Contact Bar**: Provides direct Google Contact Dork, GitHub User Search, and Twitter/X lookup buttons to bypass LinkedIn connection gates.
 
 ---
 
@@ -57,3 +59,4 @@ graph TD
   - **Groq LPU**: Free tier (14,400 requests/day) running `llama-3.3-70b-versatile`.
   - **Google Gemini**: Free tier (1,000 requests/day) running `gemini-2.5-flash` for multimodal screenshot OCR.
   - **Google News RSS Wire**: Free, unlimited real-time press and news aggregation.
+  - **Hunter.io Pattern Synthesizer & Bing Discovery**: $0.00 / free forever with no API limits.

@@ -30,6 +30,7 @@ export const Optimizer: React.FC = () => {
   const [companyName, setCompanyName] = useState<string>("");
   const [roleTitle, setRoleTitle] = useState<string>("");
   const [companyUrl, setCompanyUrl] = useState<string>("");
+  const [companyDomain, setCompanyDomain] = useState<string>("");
   const [jdText, setJdText] = useState<string>("");
 
   // Multiple Screenshots State
@@ -206,6 +207,7 @@ export const Optimizer: React.FC = () => {
           company_name: targetCompany,
           role_title: targetRole,
           company_url: companyUrl.trim() || undefined,
+          company_domain: companyDomain.trim() || undefined,
           jd_raw_text: jdText.trim() || undefined,
           screenshots_base64: uploadedImages.length > 0 ? uploadedImages.map((img) => img.base64) : undefined,
           personalization_enabled: personalizationEnabled,
@@ -285,15 +287,21 @@ export const Optimizer: React.FC = () => {
         </div>
 
         {/* Target Job Metadata */}
-        <div className="p-4 rounded-lg bg-background-card border border-border-subtle grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="p-4 rounded-lg bg-background-card border border-border-subtle grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           <div>
             <label className="text-[11px] font-mono uppercase text-text-secondary">Target Company</label>
             <input
               type="text"
               value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
+              onChange={(e) => {
+                setCompanyName(e.target.value);
+                if (!companyDomain && e.target.value.trim()) {
+                  const autoDom = "@" + e.target.value.trim().toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
+                  setCompanyDomain(autoDom);
+                }
+              }}
               className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
-              placeholder="e.g. Stripe, Google, Acme"
+              placeholder="e.g. Stripe, Meritshot, Google"
             />
           </div>
 
@@ -313,9 +321,33 @@ export const Optimizer: React.FC = () => {
             <input
               type="text"
               value={companyUrl}
-              onChange={(e) => setCompanyUrl(e.target.value)}
+              onChange={(e) => {
+                setCompanyUrl(e.target.value);
+                try {
+                  const urlStr = e.target.value.trim();
+                  if (urlStr) {
+                    const parsed = new URL(urlStr.startsWith("http") ? urlStr : `https://${urlStr}`);
+                    const host = parsed.hostname.replace(/^www\./, "");
+                    if (host) setCompanyDomain(`@${host}`);
+                  }
+                } catch {}
+              }}
               className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-legion-crimson"
-              placeholder="e.g. https://company.com/careers"
+              placeholder="e.g. https://meritshot.com/careers"
+            />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-mono uppercase text-text-secondary flex items-center justify-between">
+              <span>Email Domain</span>
+              <span className="text-[9px] text-emerald-400 font-mono">Hunter.io Synth</span>
+            </label>
+            <input
+              type="text"
+              value={companyDomain}
+              onChange={(e) => setCompanyDomain(e.target.value)}
+              className="w-full mt-1 bg-background-deep border border-border-subtle rounded px-3 py-1.5 text-xs text-emerald-300 font-mono focus:outline-none focus:border-emerald-500 placeholder-zinc-600"
+              placeholder="e.g. @meritshot.com"
             />
           </div>
         </div>
@@ -620,7 +652,7 @@ export const Optimizer: React.FC = () => {
             </div>
           ) : (
             activeResult.networking_contacts.map((c: ContactData, idx: number) => (
-              <ContactCard key={idx} contact={c} />
+              <ContactCard key={idx} contact={c} companyName={companyName || "Target Company"} />
             ))
           )}
         </div>
