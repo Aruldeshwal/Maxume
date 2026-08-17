@@ -54,3 +54,23 @@
 * **Status**: Accepted
 * **Context**: On Windows, opening a `.docx` file in Microsoft Word locks the file from being overwritten, causing `PermissionError: [Errno 13]`.
 * **Decision**: Wrap document and text file writers in try-except blocks that detect `PermissionError` and automatically write to a timestamped / suffixed path instead of crashing.
+
+## ADR-012: Grounded Hybrid AI Resume Bullet Synthesis (Zero Fake Percentages)
+* **Status**: Accepted
+* **Context**: LLM prompts asking for Google XYZ bullets produced fabricated production traffic and latency percentages for student/open-source projects.
+* **Decision**: Refactor bullet synthesis to focus on **authentic architectural mechanisms, concurrency safety, atomic database transactions, and data integrity** based on detected codebase manifests without inventing synthetic metrics.
+
+## ADR-013: Multi-Manifest & Languages API Tech Stack Extraction
+* **Status**: Accepted
+* **Context**: Single-language tagging on GitHub misrepresented complex multi-tier projects (e.g. labeling Maxume as only "Python").
+* **Decision**: Simultaneously inspect `package.json`, `requirements.txt`, `Cargo.toml`, and GitHub Languages API to construct full, multi-ecosystem tech stacks.
+
+## ADR-014: Real Employee Discovery & Live DNS MX Validation
+* **Status**: Accepted
+* **Context**: Static search queries for "Recruiter" produced generic search links rather than real actionable individuals.
+* **Decision**: Query public search streams specifically for direct `/in/` personal profiles, validate company mail servers via Google DNS-over-HTTPS (*Zoho Mail*, *Google Workspace*, *Microsoft 365*), and synthesize Hunter.io email variations with 1-click copy and `mailto:` triggers.
+
+## ADR-015: NSIS Pre-Install Hook for Shared File Overwrite
+* **Status**: Accepted
+* **Context**: Upgrading the application while `maxume_backend.exe` was running in the background caused NSIS installer `ERROR_SHARING_VIOLATION`.
+* **Decision**: Implement `nsExec::Exec 'taskkill.exe /F /IM maxume.exe /IM maxume_backend.exe /T'` in NSIS `customInit` and `customInstall` lifecycle macros to automatically terminate lingering background processes before file copying.

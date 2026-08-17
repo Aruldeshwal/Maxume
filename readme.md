@@ -1,7 +1,7 @@
 # Maxume 🦅
-> **Local-First, Airgapped AI Job Application Assistant with Hybrid Cloud Intelligence**
+> **Local-First, Airgapped AI Job Application Assistant with Grounded Hybrid Intelligence**
 
-Maxume is a tactical desktop and web application that automates technical resume customization, cover letter synthesis, company signal research, and networking referral outreach. It pairs **local-first privacy and local LLM inference (Ollama)** with **high-speed, zero-cost cloud AI (Groq LPU & Google Gemini Flash)** to produce tailored, recruiter-ready application packs in under 30 seconds.
+Maxume is a tactical desktop and web application that automates technical resume customization, single-page DOCX compilation, authentic skills extraction, company signal research, verified employee networking, and corporate email discovery. It pairs **local-first privacy and local LLM inference (Ollama)** with **high-speed, zero-cost cloud AI (Groq LPU & Google Gemini Flash)** to produce tailored, recruiter-ready application packs in under 30 seconds.
 
 ---
 
@@ -9,15 +9,17 @@ Maxume is a tactical desktop and web application that automates technical resume
 
 ### 1. Incremental Git Project Watcher & GitHub Profile Sync
 * **Automatic Repository Discovery**: Scans local directories or syncs directly with public GitHub profiles (`@Aruldeshwal`).
-* **AI Bullet Synthesizer**: Uses **Google's XYZ Formula** (*"Accomplished [X] as measured by [Y], by doing [Z]"*) to generate high-impact, architecture-focused engineering bullet points.
-* **Live Demo Extraction**: Automatically extracts live demo links (Vercel, Render, Streamlit, etc.) and embeds them directly into project title hyperlinks.
+* **Multi-Manifest Tech Stack Extractor**: Inspects remote `package.json`, `requirements.txt`, `Cargo.toml`, and GitHub Languages API to detect complete, multi-ecosystem technical stacks (e.g. `Tauri v2`, `FastAPI`, `React`, `Prisma`, `Socket.io`).
+* **Realistic Timeline Calculator**: Computes authentic 1–3 month development sprint windows based on repository creation and commit milestones (e.g. `Oct 2025 – Nov 2025`), eliminating generic `2024 – Present` placeholders.
+* **Grounded Hybrid AI Bullet Synthesizer**: Focuses on **actual system design, concurrency safety, atomic database transactions, and protocol mechanisms** without inventing fake percentages or artificial traffic loads.
+* **In-App Project Details Editor**: Edit any project's **Tech Stack**, **Timeline**, **Live Demo Link**, or **Bullet Points** directly in the UI with instant SQLite SSOT synchronization.
 * **Granular Visibility Control**: Toggle projects between **Active on Resume** and **Hidden from Resume**, or delete test repositories with 1 click.
 
 ### 2. Single-Page Paragraph-Level DOCX Engine
 * **Native Word OXML Hyperlinks**: Injects clickable hyperlinks with custom HEX styling directly into your master `.docx` template.
 * **Brief Tech Stack & Timeline Dates**: Formats project headings with title, tech stack in brief, and exact timeline:
   $$\text{\textbf{Project Title (Live Link)}} \mid \textit{Tech Stack in Brief} \mid \textit{Month Year – Month Year}$$
-* **Adaptive Bullet Headroom Filling**: Dynamically expands bullet coverage (3 high-impact bullets per project, or up to 4 for 2 projects) to maximize page density while strictly fitting on **exactly 1 single page**.
+* **Adaptive Bullet Headroom Filling**: Dynamically expands bullet coverage (3 high-impact bullets per project, or up to 4 for 2 projects) with calibrated paragraph line-spacing to maximize page density while strictly fitting on **exactly 1 single page**.
 * **Clean Metadata Stripping**: Filters out markdown headers, repo URLs, and metadata tags (`GitHub:`, `Language:`, `Tech Stack:`) to ensure only authentic achievements enter your resume.
 * **Windows File-Lock Resilience**: Automatically detects if Microsoft Word has the resume file open, saving to a fallback filename without failing the run.
 
@@ -30,8 +32,11 @@ Maxume is a tactical desktop and web application that automates technical resume
 * **Real-Time News Wire**: Integrates Google News RSS and live press wires to pull dated news, product launches, and funding rounds from verified Tier 1/Tier 2 publications (*Reuters*, *blog.google*, *TechCrunch*, *CNBC*, etc.).
 * **Deterministic Containment Check**: Post-hoc verification algorithm (`passes_containment_check`) validates that every entity, metric, and claim exists in the source text before entering your cover letter.
 
-### 5. Targeted Networking & Referral Outreach Hub
-* **Role-Specific Personas**: Synthesizes targeted referral contacts (*Senior Engineers*, *Engineering Managers*, *Technical Recruiters*) with direct LinkedIn search links.
+### 5. Targeted Real Employee Networking & Hunter.io Email Engine
+* **Zero-Placeholder Discovery**: Queries public search streams specifically for real named individuals with exact personal `/in/` LinkedIn profiles (no generic search filler).
+* **Live DNS MX Deliverability Verification**: Validates company mail servers via Google DNS-over-HTTPS, identifying providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*).
+* **Hunter.io Corporate Email Permutations**: Generates standard corporate email variations (`first.last@company.com`, `first@company.com`, `f_initial.last@company.com`) with 1-click copy and pre-filled `mailto:` compose triggers.
+* **Multi-Channel Contact Action Bar**: Provides direct Google Contact Dork, GitHub User Search, and Twitter/X lookup buttons to bypass LinkedIn connection gates.
 * **75-Word Referral Pitches**: Generates personalized, concise outreach messages ready to copy and send with a single click.
 
 ### 6. Seamless Multi-Screenshot & Clipboard OCR (`Ctrl+V`)
@@ -90,147 +95,39 @@ OLLAMA_MODEL_NAME="qwen2.5:7b-instruct"
 
 ---
 
-### 3. Step 1: Start the Python Backend Engine
-In a dedicated terminal, activate the Python virtual environment and launch FastAPI:
+### 3. Running in Development Mode
 
+#### Option A: Web Development Server
 ```powershell
-# Navigate to sidecar
-cd sidecar
+# 1. Start Python backend
+.\sidecar\venv\Scripts\activate
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 
-# Create and activate virtual environment (first time only)
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-
-# Install requirements (first time only)
-pip install -r requirements.txt
-
-# Start FastAPI Sidecar (runs on http://127.0.0.1:8000)
-python app/main.py
-```
-
----
-
-### 4. Step 2: Choose Your Frontend Mode
-
-#### Mode A: Run in Web Browser (Fastest Development Mode) 🌐
-In a second terminal:
-```powershell
-# In project root directory
-npm install      # (first time only)
+# 2. In a second terminal, start Vite frontend
 npm run dev
 ```
-Open **[http://localhost:1420](http://localhost:1420)** in Google Chrome, Edge, or Brave.
+Open `http://localhost:5173` in your browser.
 
----
-
-#### Mode B: Run Native Windows Desktop App (Development Mode) 🖥️
-In a second terminal:
+#### Option B: Full Tauri Desktop Mode
 ```powershell
-# In project root directory
 npm run tauri dev
 ```
-*(This opens the native Maxume Windows desktop window with hardware acceleration and live reload).*
 
 ---
 
-#### Mode C: Install Standalone Windows Desktop App (.exe / .msi) 📦
-Run the production installer generated by Tauri:
+### 4. Building the Production Installer
 ```powershell
-# Double-click the Windows NSIS Setup executable:
-src-tauri/target/release/bundle/nsis/Maxume_0.1.0_x64-setup.exe
-
-# Or the Windows MSI installer:
-src-tauri/target/release/bundle/msi/Maxume_0.1.0_x64_en-US.msi
-```
-* Once installed, launch **Maxume** from your Windows **Start Menu** or **Desktop Shortcut**.
-* Keep the Python sidecar running (`python sidecar/app/main.py`) in the background.
-
----
-
-### 5. Building Standalone Windows Packages from Source
-To compile and bundle fresh Windows binaries and installers:
-
-```powershell
+# Package the Python sidecar binary and compile the Windows installer
+.\sidecar\venv\Scripts\python.exe sidecar/build_sidecar.py
 npm run tauri build
 ```
-Compiled outputs will be located in:
-* `src-tauri/target/release/bundle/nsis/Maxume_0.1.0_x64-setup.exe`
-* `src-tauri/target/release/bundle/msi/Maxume_0.1.0_x64_en-US.msi`
-* `src-tauri/target/release/maxume.exe` (Standalone portable executable)
-
----
-
-### 6. Running Automated Tests
-Maxume includes a 100% automated test suite across backend Python and frontend Vitest:
-
-```powershell
-# Run backend Python tests (37 tests)
-.\sidecar\venv\Scripts\pytest.exe sidecar/tests/
-
-# Run frontend React tests (7 tests)
-npm run test
-
-# Run all tests together
-.\sidecar\venv\Scripts\pytest.exe sidecar/tests/; npm run test
+The compiled installer is generated at:
+```
+src-tauri/target/release/bundle/nsis/Maxume_0.1.0_x64-setup.exe
+src-tauri/target/release/bundle/msi/Maxume_0.1.0_x64_en-US.msi
 ```
 
 ---
 
-## 🎯 End-to-End Application Workflow
-
-1. **`[P] Projects Sync`**:
-   - Enter your GitHub username (`@Aruldeshwal`) and click **"Sync GitHub Repositories"**.
-   - The engine discovers all 12 repositories, extracts live demo links, generates XYZ formula engineering bullets, and displays active/hidden toggles.
-2. **`[A] Apply & Optimize`**:
-   - Enter Company Name (`Google`, `Microsoft`, etc.) and Role Title (`Software Engineer`).
-   - Paste Job Description text, or press **`Ctrl+V`** to paste screenshots directly from your clipboard (`Win + Shift + S`).
-   - Click **"Compile & Optimize Resume Pack"**.
-3. **Inspect Output**:
-   - View the generated **Single-Page Word Resume (`.docx`)** with active hyperlinks, tech stacks, and timelines.
-   - Read the tailored **Cover Letter**, **Outreach Email**, and **Verified Company Signals**.
-   - Review **Targeted LinkedIn Referral Personas** and copy custom 75-word referral outreach pitches.
-   - Click **"Open Output Folder"** to open the generated application pack directly in Windows File Explorer.
-
----
-
-## 📁 Repository Structure
-
-```
-Maxume/
-├── sidecar/                   # Python FastAPI Backend Engine
-│   ├── app/
-│   │   ├── main.py            # REST Endpoints & Orchestration
-│   │   ├── database.py        # SQLite SSOT & Thread-Safe Transactions
-│   │   ├── docx_engine.py     # OXML Hyperlink & Paragraph DOCX Rebuilder
-│   │   ├── github_sync.py     # GitHub Profile Sync & AI XYZ Bullet Synthesizer
-│   │   ├── skills_engine.py   # Code-Grounded Candidate Skills Categorizer
-│   │   ├── company_research.py# Real-Time News Wire & Hallucination Guard
-│   │   ├── employee_lookup.py # Targeted LinkedIn Networking Personas
-│   │   ├── groq_service.py    # High-Speed Creative Copy Generation
-│   │   ├── gemini_service.py  # Multi-Screenshot Multimodal OCR & Project Reranking
-│   │   ├── scheduler.py       # Token-Bucket Rate Limiter & Backoff
-│   │   └── image_optimizer.py # Pillow Grayscale Image Compressor
-│   └── tests/                 # Comprehensive Backend Pytest Suite
-├── src-tauri/                 # Tauri v2 Desktop Engine & Rust Configuration
-│   ├── src/                   # lib.rs and main.rs desktop entrypoints
-│   ├── icons/                 # Multi-resolution Windows application icons
-│   └── tauri.conf.json        # Tauri v2 Desktop & Bundling Manifest
-├── src/                       # React 18 + TypeScript Frontend
-│   ├── components/            # Reusable UI (QuotaRing, SignalCard, ContactCard, etc.)
-│   ├── tabs/                  # Main Views (Dashboard, ProjectSync, Optimizer, HistoryLogs)
-│   └── App.tsx                # Persistent Tab Navigation & Live Telemetry
-├── Master_Resume.docx         # Master Resume Template (Contains {{PROJECTS}} & {{SKILLS}})
-└── package.json               # Frontend Tooling & Scripts
-```
-
----
-
-## 🔒 Security & Privacy
-* **Airgapped Storage**: Master resumes, local source code, and generated application packs remain stored 100% locally on your file system.
-* **$0/Month Operating Cost**: Built entirely on generous free developer tiers (Groq 14.4k req/day, Gemini 1000 req/day, Ollama Local).
-* **Strict Containment Check**: Prevents fabricated AI claims from reaching prospective employers.
-
----
-
-## 📄 License
-MIT License. Created by [Arul Deshwal](https://github.com/Aruldeshwal).
+## 📜 License
+MIT License. Built for technical job seekers seeking authentic, high-impact application materials.
