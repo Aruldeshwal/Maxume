@@ -1,8 +1,10 @@
 """Paragraph-Level DOCX Style Cloning & Rebuilding Engine for Maxume."""
 
 import os
+import sys
 import re
 import time
+import shutil
 from typing import List, Dict, Any, Optional, Union
 import docx
 from docx import Document
@@ -94,10 +96,112 @@ def remove_paragraph(paragraph):
     if parent is not None:
         parent.remove(p_element)
 
+def create_default_master_template(target_path: str):
+    """Generates a default professional master resume docx with standard placeholders."""
+    os.makedirs(os.path.dirname(os.path.abspath(target_path)), exist_ok=True)
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin = Inches(0.5)
+        section.bottom_margin = Inches(0.5)
+        section.left_margin = Inches(0.5)
+        section.right_margin = Inches(0.5)
+        
+    p_name = doc.add_paragraph()
+    r_name = p_name.add_run("ARUL DESHWAL")
+    r_name.bold = True
+    r_name.font.size = Pt(16)
+    p_name.paragraph_format.space_after = Pt(1)
+    
+    p_contact = doc.add_paragraph("Sector 84, Faridabad, India  |  +91 80763 55239  |  aruldeshwal1@gmail.com  |  LinkedIn  |  GitHub")
+    p_contact.paragraph_format.space_after = Pt(4)
+    
+    p_sum_head = doc.add_paragraph()
+    r_sh = p_sum_head.add_run("SUMMARY")
+    r_sh.bold = True
+    p_sum_head.paragraph_format.space_before = Pt(3)
+    p_sum_head.paragraph_format.space_after = Pt(1)
+    
+    p_sum = doc.add_paragraph("CS undergraduate (8.6 CGPA) seeking SDE/MERN intern roles. Experienced in building full-stack MERN/Next.js applications, designing RESTful APIs, and structuring PostgreSQL/MongoDB databases.")
+    p_sum.paragraph_format.space_after = Pt(4)
+    
+    p_sk_head = doc.add_paragraph()
+    r_skh = p_sk_head.add_run("CORE SKILLS")
+    r_skh.bold = True
+    p_sk_head.paragraph_format.space_before = Pt(3)
+    p_sk_head.paragraph_format.space_after = Pt(1)
+    
+    doc.add_paragraph("{{SKILLS}}")
+    
+    p_pr_head = doc.add_paragraph()
+    r_prh = p_pr_head.add_run("PROJECTS")
+    r_prh.bold = True
+    p_pr_head.paragraph_format.space_before = Pt(3)
+    p_pr_head.paragraph_format.space_after = Pt(1)
+    
+    doc.add_paragraph("{{PROJECTS}}")
+    
+    p_ed_head = doc.add_paragraph()
+    r_edh = p_ed_head.add_run("EDUCATION")
+    r_edh.bold = True
+    p_ed_head.paragraph_format.space_before = Pt(3)
+    p_ed_head.paragraph_format.space_after = Pt(1)
+    
+    doc.add_paragraph("Bachelor of Technology (B.Tech), Computer Science & Engineering\nADGITM, New Delhi, India  |  CGPA: 8.6  |  Sep 2023 – Jul 2027 (Expected)")
+    
+    doc.save(target_path)
+    return target_path
+
+def resolve_master_template(preferred_path: Optional[str] = None) -> str:
+    """Discovers Master_Resume.docx across all known workspace, desktop, and AppData paths."""
+    candidates = []
+    if preferred_path:
+        candidates.append(preferred_path)
+        candidates.append(os.path.abspath(preferred_path))
+    
+    env_path = os.environ.get("MASTER_RESUME_PATH")
+    if env_path:
+        candidates.append(env_path)
+        candidates.append(os.path.abspath(env_path))
+        
+    home = os.path.expanduser("~")
+    appdata = os.environ.get("APPDATA", "")
+    
+    candidates.extend([
+        os.path.abspath("Master_Resume.docx"),
+        os.path.join(os.getcwd(), "Master_Resume.docx"),
+        os.path.join(home, "OneDrive", "Desktop", "Maxume", "Master_Resume.docx"),
+        os.path.join(home, "Desktop", "Maxume", "Master_Resume.docx"),
+        os.path.join(home, "OneDrive", "Desktop", "Master_Resume.docx"),
+        os.path.join(home, "Desktop", "Master_Resume.docx"),
+        os.path.join(home, "Documents", "Master_Resume.docx"),
+        os.path.join(appdata, "Maxume", "Master_Resume.docx") if appdata else "",
+        os.path.join(os.path.dirname(sys.executable), "Master_Resume.docx"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "Master_Resume.docx"),
+    ])
+    
+    for c in candidates:
+        if c and os.path.exists(c):
+            # Cache to AppData for permanent offline availability in installed mode
+            if appdata and not c.startswith(appdata):
+                try:
+                    appdata_target = os.path.join(appdata, "Maxume", "Master_Resume.docx")
+                    os.makedirs(os.path.dirname(appdata_target), exist_ok=True)
+                    if not os.path.exists(appdata_target):
+                        shutil.copy2(c, appdata_target)
+                except Exception:
+                    pass
+            return os.path.abspath(c)
+            
+    # Auto-generate if missing
+    target_dir = os.path.join(appdata, "Maxume") if appdata else os.getcwd()
+    fallback_template = os.path.join(target_dir, "Master_Resume.docx")
+    create_default_master_template(fallback_template)
+    return fallback_template
+
 class DocxEngine:
     @staticmethod
     def rebuild_resume(
-        template_path: str,
+        template_path: Optional[str],
         output_path: str,
         projects: List[Dict[str, Any]],
         skills: Union[List[str], Dict[str, List[str]]],
@@ -107,10 +211,8 @@ class DocxEngine:
         Rebuilds a resume document by replacing {{PROJECTS}} and {{SKILLS}} placeholders
         with styled content, embedding tech stack and timeline, and maximizing high-impact bullet coverage.
         """
-        if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Master resume template not found: {template_path}")
-
-        doc = Document(template_path)
+        actual_template = template_path if (template_path and os.path.exists(template_path)) else resolve_master_template(template_path)
+        doc = Document(actual_template)
         
         # Enforce single-page guardrail: 3 projects max, 3-4 bullets each to fill available lines
         bounded_projects = projects[:MAX_PROJECTS]
@@ -158,32 +260,27 @@ class DocxEngine:
                     r_date.italic = True
 
                 # Filter and inject authentic engineering bullet points
-                raw_bullets = proj.get("bullets", [])
-                valid_bullets = [
-                    clean_bullet_string(b) for b in raw_bullets if is_valid_bullet_point(b)
-                ][:max_bullets_per_proj]
+                bullets = proj.get("bullets", [])
+                clean_bullets = []
+                for b in bullets:
+                    if is_valid_bullet_point(b):
+                        clean_bullets.append(clean_bullet_string(b))
 
-                # Fallback pads bullets up to max_bullets_per_proj to fill available page lines
-                if len(valid_bullets) < max_bullets_per_proj:
-                    fallbacks = [
-                        f"Architected core backend architecture and services for {title} with optimized throughput.",
-                        "Engineered modular REST APIs and automated continuous integration pipelines.",
-                        f"Designed responsive, accessible user interfaces ensuring sub-100ms client-side latency."
-                    ]
-                    for fb in fallbacks:
-                        if len(valid_bullets) >= max_bullets_per_proj:
-                            break
-                        if fb not in valid_bullets:
-                            valid_bullets.append(fb)
+                if not clean_bullets:
+                    summary_text = proj.get("summary_markdown", "")
+                    if summary_text:
+                        for line in summary_text.splitlines():
+                            if is_valid_bullet_point(line):
+                                clean_bullets.append(clean_bullet_string(line))
 
-                for bullet_text in valid_bullets:
+                for bullet_text in clean_bullets[:max_bullets_per_proj]:
                     bullet_para = insert_paragraph_before(projects_placeholder)
                     copy_paragraph_style(projects_placeholder, bullet_para)
-                    bullet_para.paragraph_format.left_indent = Inches(0.2)
+                    bullet_para.paragraph_format.left_indent = Inches(0.25)
                     bullet_para.paragraph_format.space_before = Pt(0)
                     bullet_para.paragraph_format.space_after = Pt(1.5)
                     bullet_para.paragraph_format.line_spacing = 1.05
-                    bullet_para.add_run(f"• {bullet_text}")
+                    bullet_para.add_run(f"•  {bullet_text}")
 
             # Remove original {{PROJECTS}} placeholder
             remove_paragraph(projects_placeholder)

@@ -35,7 +35,7 @@ for ep in candidate_env_paths:
 
 from app.database import db
 from app.git_watcher import GitWatcher
-from app.docx_engine import DocxEngine
+from app.docx_engine import DocxEngine, resolve_master_template
 from app.ollama_manager import ollama_manager
 from app.company_research import research_company, ResearchBrief
 from app.employee_lookup import lookup_company_employees
@@ -399,18 +399,21 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     )
 
     # 4. Resume DOCX Rebuilding
-    raw_template = payload.master_resume_path or os.environ.get("MASTER_RESUME_PATH", "Master_Resume.docx")
-    candidate_template_paths = [
-        raw_template,
-        os.path.abspath(raw_template),
-        os.path.join(os.getcwd(), raw_template),
-        os.path.join(os.path.dirname(__file__), "..", "..", raw_template),
-        os.path.join(os.path.dirname(__file__), "..", "..", "Master_Resume.docx"),
-    ]
-    template_path = next((p for p in candidate_template_paths if os.path.exists(p)), raw_template)
+    template_path = resolve_master_template(payload.master_resume_path)
 
-    raw_out = payload.output_dir or os.environ.get("OUTPUT_DIR_PATH", "./output")
-    out_root = os.path.abspath(raw_out)
+    # Resolve output directory
+    raw_out = payload.output_dir or os.environ.get("OUTPUT_DIR_PATH")
+    if not raw_out or raw_out == "./output":
+        home = os.path.expanduser("~")
+        candidates = [
+            os.path.join(home, "OneDrive", "Desktop", "Job-Content"),
+            os.path.join(home, "Desktop", "Job-Content"),
+            os.path.join(os.environ.get("APPDATA", ""), "Maxume", "Job-Content"),
+        ]
+        out_root = next((c for c in candidates if os.path.exists(os.path.dirname(c))), os.path.abspath("./output"))
+    else:
+        out_root = os.path.abspath(raw_out)
+
     company_slug = "".join(c for c in company_clean if c.isalnum() or c in ("-", "_")).lower() or "company"
     app_output_dir = os.path.join(out_root, company_slug)
     os.makedirs(app_output_dir, exist_ok=True)
@@ -427,6 +430,7 @@ async def optimize_application(payload: OptimizeApplicationRequest):
             projects=ranked_projects,
             skills=authentic_skills
         )
+        logger.info(f"Resume successfully compiled to: {compiled_resume_path}")
     except Exception as docx_err:
         logger.error(f"DocxEngine rebuild failed: {docx_err}", exc_info=True)
 
