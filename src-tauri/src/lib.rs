@@ -36,6 +36,19 @@ fn log_launcher(msg: &str) {
     }
 }
 
+#[cfg(target_os = "windows")]
+fn kill_stale_backend_processes() {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+    let _ = Command::new("taskkill")
+        .args(["/F", "/IM", "maxume_backend.exe", "/T"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .status();
+}
+
+#[cfg(not(target_os = "windows"))]
+fn kill_stale_backend_processes() {}
+
 fn find_backend_binary() -> Option<PathBuf> {
     // 1. Production Installed Layout: Check directly adjacent to maxume.exe
     if let Ok(exe_path) = current_exe() {
@@ -73,6 +86,9 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            // Clean up any stale orphaned backend processes
+            kill_stale_backend_processes();
+
             let mut active_backend: Option<BackendProcess> = None;
 
             // Strategy 1: Direct Executable Discovery (100% reliable for Windows installers)
@@ -115,6 +131,15 @@ pub fn run() {
             // Persist process in app state so it stays alive throughout application lifetime
             app.manage(SidecarState(Mutex::new(active_backend)));
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Some(state) = window.try_state::<SidecarState>() {
+                    if let Ok(mut guard) = state.0.lock() {
+                        let _ = guard.take();
+                    }
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
