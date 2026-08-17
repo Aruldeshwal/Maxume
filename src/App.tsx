@@ -14,7 +14,7 @@ import HistoryLogs from "./tabs/HistoryLogs";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "sync" | "optimizer" | "history" | "settings">("dashboard");
-  const [ollamaStatus, setOllamaStatus] = useState({ online: true, model: "qwen2.5:7b-instruct", vram: "4.8GB / 5.2GB" });
+  const [ollamaStatus, setOllamaStatus] = useState({ online: false, model: "qwen2.5:7b-instruct", vram: "4.8GB / 5.2GB" });
   const [totalApps, setTotalApps] = useState<number>(0);
   const [quotas] = useState({
     gemini: { used: 0, total: 1000 },
@@ -22,16 +22,29 @@ export default function App() {
   });
 
   useEffect(() => {
-    // Check sidecar and Ollama status
-    fetch("http://127.0.0.1:8000/api/ollama/status")
-      .then((r) => r.json())
-      .then((data) => {
-        setOllamaStatus((prev) => ({
-          ...prev,
-          online: data.online,
-        }));
-      })
-      .catch(() => {});
+    // Check sidecar and Ollama status continuously
+    const checkOllamaStatus = () => {
+      fetch("http://127.0.0.1:8000/api/ollama/status")
+        .then((r) => {
+          if (!r.ok) throw new Error("Ollama endpoint error");
+          return r.json();
+        })
+        .then((data) => {
+          setOllamaStatus((prev) => ({
+            ...prev,
+            online: !!data.online,
+          }));
+        })
+        .catch(() => {
+          setOllamaStatus((prev) => ({
+            ...prev,
+            online: false,
+          }));
+        });
+    };
+
+    checkOllamaStatus();
+    const interval = setInterval(checkOllamaStatus, 3000);
 
     // Check application count
     fetch("http://127.0.0.1:8000/api/applications")
@@ -40,6 +53,8 @@ export default function App() {
         setTotalApps(data.applications?.length || 0);
       })
       .catch(() => {});
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -65,9 +80,11 @@ export default function App() {
             </span>
             <span className="text-text-secondary">Ollama Local:</span>
             <span className={ollamaStatus.online ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
-              {ollamaStatus.model}
+              {ollamaStatus.online ? ollamaStatus.model : "Offline"}
             </span>
-            <span className="text-text-muted">({ollamaStatus.vram})</span>
+            <span className="text-text-muted">
+              ({ollamaStatus.online ? ollamaStatus.vram : "Service Disconnected"})
+            </span>
           </div>
 
           <div className="h-3 w-px bg-border-subtle"></div>

@@ -63,12 +63,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="text-base font-bold font-mono text-white flex items-center space-x-2">
-            <Cpu className="w-4 h-4 text-emerald-400" />
-            <span>{ollamaModel || "qwen2.5:7b-instruct"}</span>
+            <Cpu className={`w-4 h-4 ${ollamaOnline ? "text-emerald-400" : "text-rose-400"}`} />
+            <span>{ollamaOnline ? (ollamaModel || "qwen2.5:7b-instruct") : "Daemon Offline"}</span>
           </div>
           <div className="text-xs text-text-secondary flex justify-between font-mono pt-1 border-t border-border-subtle/60">
             <span>VRAM Allocation:</span>
-            <span className="text-emerald-400 font-semibold">{ollamaVram || "4.8GB / 5.2GB"}</span>
+            <span className={ollamaOnline ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
+              {ollamaOnline ? (ollamaVram || "4.8GB / 5.2GB") : "Service Disconnected"}
+            </span>
           </div>
         </div>
 
