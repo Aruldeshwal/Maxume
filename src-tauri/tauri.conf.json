@@ -38,6 +38,11 @@
     ],
     "externalBin": [
       "binaries/maxume_backend"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis_hooks.nsi"
+      }
+    }
   }
 }
