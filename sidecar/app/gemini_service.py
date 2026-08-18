@@ -178,14 +178,15 @@ class GeminiService:
         if not candidate_projects:
             return []
 
-        # 1. Score ALL candidate projects semantically against the target JD
-        scored_projects = sorted(
-            candidate_projects,
-            key=lambda p: score_project_relevance(p, jd_text),
-            reverse=True
+        # 1. Select candidate projects using Maximal Marginal Relevance (MMR)
+        from app.project_matcher import select_projects_mmr
+        mmr_projects = select_projects_mmr(
+            candidate_projects=candidate_projects,
+            jd_text=jd_text,
+            top_k=min(8, len(candidate_projects))
         )
 
-        prefiltered = scored_projects[:8]
+        prefiltered = mmr_projects if mmr_projects else candidate_projects[:8]
 
         def extract_clean_bullets_from_text(summary_txt: str) -> List[str]:
             valid = []
@@ -213,9 +214,9 @@ class GeminiService:
             return tech, timeline
 
         def get_local_fallback() -> List[Dict[str, Any]]:
-            """Returns the highest scored candidate projects with clean metadata."""
+            """Returns the highest scored MMR projects with clean metadata."""
             fallback_list = []
-            for i, p in enumerate(scored_projects[:top_k]):
+            for i, p in enumerate(prefiltered[:top_k]):
                 summary_txt = p.get("summary_markdown", "")
                 extracted_bullets = extract_clean_bullets_from_text(summary_txt)
                 meta_tech, meta_timeline = extract_metadata_from_summary(summary_txt)

@@ -4,6 +4,16 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.5.0] - 2026-08-18 (Maximal Marginal Relevance & Skill-Cluster Project Matching)
+
+### Added
+- **Maximal Marginal Relevance (MMR) Project Engine** (`project_matcher.py`): Implemented MMR optimization to maximize unique skill-cluster coverage and eliminate tech-stack redundancy.
+  - For **Hybrid JDs** (e.g. MERN + Python/FastAPI): Selects the best project from each requested domain (`Metro-Connect`, `Maxume`, `EzNotes`) providing 100% JD coverage.
+  - For **Single-Stack JDs** (e.g. Pure MERN): Evaluates only requested skills, guaranteeing 100% MERN projects (`Book-IT`, `SlotSwap`, `Productivity-Overload`) with **zero out-of-scope technologies injected**.
+- **Canonical Skill Taxonomy Map**: Maps variations (`js` $\rightarrow$ `javascript`, `mongo`/`mongoose` $\rightarrow$ `mongodb`, `fastapi`, `tailwind`, `socket.io`, `scikit-learn`) into unified skill domains.
+
+---
+
 ## [v1.4.0] - 2026-08-18 (Semantic Project Matching & Live Quota Tracking)
 
 ### Fixed & Enhanced

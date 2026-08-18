@@ -85,3 +85,9 @@
 * **Context**: Dashboard quota rings showed static `0/1000 req` and `0/14400 req` without tracking actual cloud API consumption.
 * **Decision**: Create an `api_quotas` table in SQLite, automatically increment counters on successful task completion in `scheduler.py`, expose `GET /api/quotas`, and poll from `App.tsx` every 3 seconds to render live API usage in real time.
 
+## ADR-018: Maximal Marginal Relevance (MMR) & Skill-Cluster Project Matching
+* **Status**: Accepted
+* **Context**: Multi-stack job descriptions (e.g. React/Next.js + Python/FastAPI) suffered from tech-stack redundancy when greedy matching selected 3 pure React projects, leaving Python/FastAPI completely unrepresented.
+* **Decision**: Implement Maximal Marginal Relevance (MMR) where each candidate project is evaluated for its marginal coverage gain of unrepresented JD skills with a redundancy penalty for already-covered technologies, bounded strictly to skills explicitly requested in the JD.
+
+
