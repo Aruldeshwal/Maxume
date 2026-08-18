@@ -233,6 +233,7 @@ async def sync_projects(payload: Optional[ProjectSyncRequest] = None):
 class GitHubProfileSyncRequest(BaseModel):
     username: str
     token: Optional[str] = None
+    force_resync: Optional[bool] = False
 
 @app.post("/api/projects/github-sync")
 @app.post("/api/github/sync")
@@ -243,7 +244,8 @@ async def sync_github_profile(payload: GitHubProfileSyncRequest):
             sync_github_profile_repositories,
             payload.username,
             payload.token,
-            db
+            db,
+            payload.force_resync or False
         )
         return {
             "status": "ok",

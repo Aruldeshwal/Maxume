@@ -380,7 +380,8 @@ def extract_project_bullet_points(
 def sync_github_profile_repositories(
     username: str,
     token: Optional[str] = None,
-    database: Database = default_db
+    database=None,
+    force_resync: bool = False
 ) -> List[Dict[str, Any]]:
     """
     Queries public GitHub API for a user profile, fetches repositories, manifests and READMEs,
@@ -424,9 +425,9 @@ def sync_github_profile_repositories(
         created_at = repo.get("created_at", "")
         virtual_path = f"github.com/{clean_user}/{repo_name}"
 
-        # Incremental Commit Check: Skip re-extraction if repository has no new commits
-        existing = database.get_project_by_path(virtual_path)
-        if existing and existing.get("last_commit_hash") == pushed_at:
+        # Incremental Commit Check: Skip re-extraction if repository has no new commits (unless force_resync is True)
+        existing = database.get_project_by_path(virtual_path) if database else None
+        if not force_resync and existing and existing.get("last_commit_hash") == pushed_at:
             results.append({
                 "directory_name": repo_name,
                 "directory_path": virtual_path,

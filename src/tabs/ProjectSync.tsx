@@ -171,7 +171,7 @@ export const ProjectSync: React.FC = () => {
     }
   };
 
-  const handleGithubSync = async () => {
+  const handleGithubSync = async (force: boolean = false) => {
     if (!githubUsername.trim()) return;
     setIsSyncing(true);
     setSyncFeedback(null);
@@ -184,16 +184,27 @@ export const ProjectSync: React.FC = () => {
         body: JSON.stringify({
           username: githubUsername.trim(),
           token: githubToken.trim() || undefined,
+          force_resync: force,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const count = data.results?.length || 0;
-        const liveCount = data.results?.filter((r: any) => r.live_demo_url)?.length || 0;
+        const results = data.results || [];
+        const count = results.length;
+        const unchangedCount = results.filter((r: any) => r.status === "unchanged").length;
+        const syncedCount = count - unchangedCount;
+        const liveCount = results.filter((r: any) => r.live_demo_url)?.length || 0;
+
+        const summaryText = force
+          ? `Force Re-Sync complete! Re-analyzed all ${count} repositories from GitHub.`
+          : syncedCount > 0
+            ? `Sync complete! Synced ${syncedCount} new/updated repos (${unchangedCount} unchanged, ${liveCount} live demo URLs).`
+            : `Sync complete! All ${count} repositories are up to date with zero changes (${liveCount} live demo URLs).`;
+
         setSyncFeedback({
           type: "success",
-          text: `Successfully synced @${githubUsername}! Found ${count} repositories (${liveCount} live demo links extracted).`,
+          text: summaryText,
         });
 
         const projRes = await fetch("http://127.0.0.1:8000/api/projects?include_hidden=true");
@@ -337,9 +348,9 @@ export const ProjectSync: React.FC = () => {
               </div>
             </div>
 
-            <div className="md:col-span-5">
+            <div className="md:col-span-4">
               <label className="block text-[11px] font-mono text-text-secondary uppercase mb-1">
-                Personal Access Token (Optional - Higher Rate Limits)
+                Personal Access Token (Optional)
               </label>
               <input
                 type="password"
@@ -350,14 +361,25 @@ export const ProjectSync: React.FC = () => {
               />
             </div>
 
-            <div className="md:col-span-3 flex items-end">
+            <div className="md:col-span-4 flex items-end space-x-2">
               <button
-                onClick={handleGithubSync}
+                onClick={() => handleGithubSync(false)}
                 disabled={isSyncing || !githubUsername.trim()}
-                className="w-full px-4 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-[0_0_15px_rgba(225,29,72,0.3)]"
+                className="flex-1 px-3 py-2 rounded bg-legion-crimson hover:bg-legion-neon text-white font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-[0_0_15px_rgba(225,29,72,0.3)]"
+                title="Incremental sync: Only updates repositories with new commits (keeps custom in-app edits)"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
                 <span>{isSyncing ? "Syncing..." : "Sync GitHub"}</span>
+              </button>
+
+              <button
+                onClick={() => handleGithubSync(true)}
+                disabled={isSyncing || !githubUsername.trim()}
+                className="px-3 py-2 rounded bg-background-elevated hover:bg-background-hover border border-border-subtle hover:border-legion-crimson/50 text-text-secondary hover:text-white font-mono font-medium text-xs uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center space-x-1"
+                title="Force re-sync: Re-analyzes all repositories from GitHub from scratch"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-legion-crimson" />
+                <span>Force Full</span>
               </button>
             </div>
           </div>
