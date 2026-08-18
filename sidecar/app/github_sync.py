@@ -422,8 +422,25 @@ def sync_github_profile_repositories(
         language = repo.get("language") or "General Software"
         pushed_at = repo.get("pushed_at", "")
         created_at = repo.get("created_at", "")
+        virtual_path = f"github.com/{clean_user}/{repo_name}"
 
-        # Try to fetch raw README
+        # Incremental Commit Check: Skip re-extraction if repository has no new commits
+        existing = database.get_project_by_path(virtual_path)
+        if existing and existing.get("last_commit_hash") == pushed_at:
+            results.append({
+                "directory_name": repo_name,
+                "directory_path": virtual_path,
+                "commit_hash": pushed_at[:10] if pushed_at else "Remote",
+                "live_demo_url": existing.get("live_demo_url"),
+                "tech_stack": existing.get("tech_stack"),
+                "date": existing.get("timeline") or existing.get("date"),
+                "language": language,
+                "bullet_points": existing.get("bullets", []),
+                "status": "unchanged"
+            })
+            continue
+
+        # Try to fetch raw README for newly created or updated repos
         readme_text = ""
         b = default_branch or "main"
         raw_readme_url = f"https://raw.githubusercontent.com/{clean_user}/{repo_name}/{b}/README.md"

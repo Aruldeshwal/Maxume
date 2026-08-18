@@ -24,6 +24,7 @@ graph TD
 ```
 
 ### Pillar 1: Project Knowledge Base & Multi-Manifest SSOT
+- **Incremental Commit-Hash Sync**: Compares GitHub `pushed_at` commit timestamps against the SQLite SSOT. Unchanged repositories are instantly marked as `unchanged` (0.5s total sync), preventing redundant LLM calls, avoiding GitHub API rate limits, and **preserving custom in-app edits** made to existing projects.
 - **Multi-Manifest Tech Stack Extractor**: Inspects remote `package.json`, `requirements.txt`, `Cargo.toml`, and GitHub Languages API to detect complete, multi-ecosystem technical stacks (e.g. `Tauri v2`, `FastAPI`, `React`, `Prisma`, `Socket.io`).
 - **Realistic Timeline Calculator**: Computes authentic 1–3 month development sprint windows based on repository creation and commit milestones (e.g. `Oct 2025 – Nov 2025`), eliminating generic `2024 – Present` placeholders.
 - **Grounded Hybrid AI Bullet Engine**: Focuses on **actual system design, concurrency safety, atomic database transactions, room multiplexing, and protocol mechanisms** without inventing fake percentages or artificial traffic loads.
