@@ -34,9 +34,15 @@
 - [x] Live DNS MX Deliverability Verification via Google DNS-over-HTTPS (*Zoho Mail*, *Google Workspace*, *Microsoft 365*).
 - [x] Hunter.io Corporate Email Permutations (`first.last@domain`, `first@domain`, `f_initial.last@domain`) with 1-click copy and pre-filled `mailto:` triggers.
 - [x] Multi-Channel Contact Action Bar (Google Dork, GitHub User Search, Twitter / X DM search).
-- [x] Personalized 75-word referral outreach pitches crafted by Groq Llama 3.3 70B.
+- [x] Personalized 75-word referral outreach pitches crafted by Groq LPU.
 
-### Phase 5: Production Build, Packaging & Installer Resilience (Completed)
+### Phase 5: Dynamic Diversity Project Matcher, Quota Tracker & Incremental Sync (Completed)
+- [x] Maximal Marginal Relevance (MMR) & Skill-Cluster Project Matcher ([`project_matcher.py`](file:///C:/Users/aruld/OneDrive/Desktop/Maxume/sidecar/app/project_matcher.py)) eliminating tech-stack redundancy while strictly guaranteeing zero out-of-scope injections on single-stack roles.
+- [x] Incremental Commit-Hash GitHub Sync (~0.5s profile sync skipping unchanged repos) + `[Force Full]` re-sync option.
+- [x] Real-Time Daily API Quota Tracker (`api_quotas` table, automatic increments in `scheduler.py`, `GET /api/quotas` endpoint, 3s dashboard polling).
+- [x] Active Production Model Endpoints updated: `gemini-3-flash-preview`, `gemini-3.1-flash-lite-preview`, `qwen/qwen3.6-27b`, `openai/gpt-oss-120b`, with reasoning tag sanitization.
+
+### Phase 6: Production Build, Packaging & Installer Resilience (Completed)
 - [x] NSIS pre-install and customInstall lifecycle macros eliminating `ERROR_SHARING_VIOLATION` file locks during upgrades.
 - [x] Tauri v2 dual launcher and window event handlers ensuring child processes close cleanly on exit.
 - [x] PyInstaller standalone sidecar compilation (`maxume_backend.exe`).
