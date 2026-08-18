@@ -39,3 +39,12 @@
 ### 10. Windows File Locking (`ERROR_SHARING_VIOLATION`) During Installer Runs
 * **Difficulty**: The background sidecar executable (`maxume_backend.exe`) locked itself in memory, preventing the NSIS setup installer from overwriting the file during upgrades.
 * **Resolution**: Implemented `nsExec::Exec 'taskkill.exe /F /IM maxume.exe /IM maxume_backend.exe /T'` inside NSIS `customInit` and `customInstall` macros, plus Tauri window destruction event cleanup.
+
+### 11. Upstream Model Deprecations and Static Fallback Repetition
+* **Difficulty**: Upstream cloud model name shifts (`llama-3.3-70b-versatile` and `gemini-2.5-flash` returning 404s) caused the reranking pipeline to drop into fallback mode, which was previously sorted alphabetically and returned the same first 3 projects.
+* **Resolution**: Updated model lists to verified active production endpoints (`gemini-3-flash-preview`, `qwen/qwen3.6-27b`, `openai/gpt-oss-120b`) and constructed a weighted semantic relevance matcher (`score_project_relevance`) ensuring tailored project selection even when offline.
+
+### 12. Static Quota Counter Disconnected from Backend
+* **Difficulty**: The frontend quota rings displayed static initial state without reflecting actual cloud API calls.
+* **Resolution**: Added an `api_quotas` table in SQLite, connected automatic increments into `scheduler.execute_task`, and polled `GET /api/quotas` every 3 seconds to reflect live usage numbers.
+

@@ -1,7 +1,7 @@
 # Project Overview & Single Source of Truth (SSOT)
 
 ## 1. Executive Summary
-**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, formats concise tech stacks and timelines, enforces strict single-page limits with adaptive bullet filling, synthesizes Hunter.io-style verified corporate emails, and personalizes application materials with verified company news and multi-channel referral contacts.
+**Maxume** is a local-first, airgapped AI Job Application Assistant built to solve the modern technical job application problem. Instead of generic AI resume tools that hallucinate technologies or output plain text, Maxume parses real local/GitHub source code, embeds clickable Word hyperlinks into `.docx` master templates, formats concise tech stacks and timelines, enforces strict single-page limits with adaptive bullet filling, dynamically matches the most relevant candidate projects to any Job Description using multi-factor semantic scoring, synthesizes Hunter.io-style verified corporate emails, tracks live daily API quotas, and personalizes application materials with verified company news and multi-channel referral contacts.
 
 ---
 
@@ -10,40 +10,48 @@
 ```mermaid
 graph TD
     A[Local Codebase / GitHub Sync] -->|Incremental Git Watcher| B[(SQLite Local SSOT)]
-    B -->|FAANG Principal Architect AI Synthesizer| C[High-Impact Engineering Highlights]
-    D[Target Job Description / Screenshots] -->|Gemini Multimodal OCR| E[JD Parser & Project Reranker]
-    C --> F[DocxEngine]
-    E --> F
-    B -->|Skills Engine (Zero Hallucinations)| F
-    F -->|OXML Hyperlinks + Tech Stack + Timeline| G[Single-Page Master_Resume.docx]
-    D -->|Real-Time News RSS Wire| H[Company Research Signals]
-    H -->|3-Stage Containment Guard| I[Personalized Cover Letter & Outreach]
-    D -->|Real Person Discovery & Hunter.io Engine| J[Multi-Channel Outreach & Email Synthesizer]
+    B -->|Grounded Hybrid AI Bullet Synthesizer| C[High-Impact Engineering Highlights]
+    D[Target Job Description / Screenshots] -->|Gemini Multimodal OCR| E[JD Parser]
+    B -->|Semantic Relevance Scorer + Active Gemini Reranker| F[Dynamically Matched Top Projects]
+    C --> G[DocxEngine]
+    F --> G
+    B -->|Skills Engine (Zero Hallucinations)| G
+    G -->|OXML Hyperlinks + Tech Stack + Timeline| H[Single-Page Master_Resume.docx]
+    D -->|Real-Time News RSS Wire| I[Company Research Signals]
+    I -->|3-Stage Containment Guard| J[Personalized Cover Letter & Outreach]
+    D -->|Real Person Discovery & Hunter.io Engine| K[Multi-Channel Outreach & Email Synthesizer]
+    G -->|Live Request Quota Tracking| L[SQLite Daily Quota Tracker & Dashboard]
 ```
 
-### Pillar 1: Project Knowledge Base (SSOT)
-- **Watcher & GitHub Sync**: Tracks local repository folders and GitHub profile repos (`@Aruldeshwal`).
-- **FAANG Principal Architect AI Bullets**: Synthesizes Google XYZ-formula engineering bullet points (*Accomplished [X] as measured by [Y], by doing [Z]*) with concrete architectural metrics (latency reduction, scale/concurrency, atomic transactions, query indexing).
-- **Live Demo & Timeline Extraction**: Automatically extracts live URLs and computes active project timelines (e.g. `Oct 2024 – Dec 2024`).
-- **Visibility Toggle**: Supports marking repositories as `Active on Resume` or `Hidden from Resume` to keep non-relevant repos off the resume.
+### Pillar 1: Project Knowledge Base & Multi-Manifest SSOT
+- **Multi-Manifest Tech Stack Extractor**: Inspects remote `package.json`, `requirements.txt`, `Cargo.toml`, and GitHub Languages API to detect complete, multi-ecosystem technical stacks (e.g. `Tauri v2`, `FastAPI`, `React`, `Prisma`, `Socket.io`).
+- **Realistic Timeline Calculator**: Computes authentic 1–3 month development sprint windows based on repository creation and commit milestones (e.g. `Oct 2025 – Nov 2025`), eliminating generic `2024 – Present` placeholders.
+- **Grounded Hybrid AI Bullet Engine**: Focuses on **actual system design, concurrency safety, atomic database transactions, room multiplexing, and protocol mechanisms** without inventing fake percentages or artificial traffic loads.
+- **In-App Project Details Editor**: Edit any project's **Tech Stack**, **Timeline**, **Live Demo Link**, or **Bullet Points** directly in the UI with instant SQLite SSOT synchronization (`PUT /api/projects/{id}`).
+- **Visibility Control**: Supports marking repositories as `Active on Resume` or `Hidden from Resume` to keep non-relevant repos off the resume.
 
-### Pillar 2: Paragraph-Level DOCX Engine
+### Pillar 2: Dynamic Semantic Project Matching & Reranking
+- **Multi-Factor Semantic Relevance Scorer**: Computes weighted keyword and domain matching (`score_project_relevance`) against target Job Descriptions, evaluating tech stacks, directory names, and project highlights.
+- **Dynamic Role Adaptation**:
+  - *Machine Learning / Data Science Jobs* $\rightarrow$ Automatically prioritizes `sentiment-analysis-app` and `Maxume`.
+  - *Full-Stack / Next.js / TypeScript Jobs* $\rightarrow$ Automatically prioritizes `Metro-Connect`, `EzNotes`, and `Calvero`.
+  - *Backend / Node / MongoDB Jobs* $\rightarrow$ Automatically prioritizes `Book-IT`, `SlotSwap`, and `Productivity-Overload`.
+- **Active Model Verification**: Uses currently verified production endpoints (`gemini-3-flash-preview`, `gemini-3.1-flash-lite-preview`, `qwen/qwen3.6-27b`, `openai/gpt-oss-120b`) with reasoning tag stripping (`<think>.*?</think>`).
+
+### Pillar 3: Paragraph-Level DOCX Engine & Single-Page Calibration
 - **Active Word OXML Hyperlinks**: Generates Word `<w:hyperlink>` relationships directly in python-docx, styling live project titles in bold crimson with active external URLs.
 - **Brief Tech Stack & Timeline**: Formats project headers with title, brief tech stack, and timeline dates: `Project Title | Tech Stack | Month Year – Month Year`.
 - **Adaptive Bullet Headroom Filling**: Dynamically allocates 3 high-impact bullets per project (or up to 4 for 2 projects) with calibrated paragraph line spacing (`Pt(0)` before, `Pt(1.5)` after, `1.05` line-spacing) ensuring the document strictly fills exactly 1 single page.
 - **Metadata Cleansing**: Automatically filters out markdown syntax, bold labels, and repository URLs from resume bullet text.
 - **File-Lock Safe Writer**: Catches Windows Word file-lock exceptions and saves to safe fallback paths without failing the run.
 
-### Pillar 3: Authentic Skills Synthesis
-- **Zero-Hallucination Grounding**: Scans all 12 verified repositories and master resume text to whitelist only authentic technologies.
-- **ATS Categorization**: Formats skills into *Programming Languages*, *Frameworks & Libraries*, *Databases & DevOps*, and *Core Competencies & AI*.
-- **JD Alignment**: Dynamically prioritizes skills matching the target job description to the front of each category.
-
-### Pillar 4: Real-Time Signal Research & Multi-Channel Networking Hub
+### Pillar 4: Real-Time Quota Tracking & Networking Outreach Hub
+- **Real-Time Daily API Quota Tracker**: Persists daily request counts in SQLite (`api_quotas` table) and exposes `GET /api/quotas`, updating the UI dashboard rings live as runs execute.
 - **Real-Time News Wire**: Aggregates real-time news, launches, and funding rounds from Google News RSS and direct company announcements.
 - **3-Stage Hallucination Containment**: Deterministic verification (`passes_containment_check`) rejects ungrounded claims.
 - **Real Person Discovery**: Queries public search streams to find actual current employees and leaders with exact personal `/in/` LinkedIn profiles (no generic search filler).
 - **Hunter.io-Style Email Engine**: Generates corporate email permutations (`first.last@company.com`, `first@company.com`, `f.last@company.com`) from the company domain with 1-click copy and pre-filled `mailto:` compose links.
+- **DNS-over-HTTPS MX Deliverability**: Validates company mail servers via Google DNS-over-HTTPS, identifying mail host providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*).
 - **Multi-Channel Contact Bar**: Provides direct Google Contact Dork, GitHub User Search, and Twitter/X lookup buttons to bypass LinkedIn connection gates.
 
 ---
@@ -56,7 +64,7 @@ graph TD
 * **Database**: Local SQLite3 (`maxume_local.db`) with thread-safe `with self.get_connection() as conn:` context managers.
 * **Zero Cost Strategy**:
   - **Ollama**: Local open-source inference (`qwen2.5:7b-instruct`) with dynamic VRAM limits.
-  - **Groq LPU**: Free tier (14,400 requests/day) running `llama-3.3-70b-versatile`.
-  - **Google Gemini**: Free tier (1,000 requests/day) running `gemini-2.5-flash` for multimodal screenshot OCR.
+  - **Groq LPU**: Free tier (14,400 requests/day) running `qwen/qwen3.6-27b` and `openai/gpt-oss-120b`.
+  - **Google Gemini**: Free tier (1,000 requests/day) running `gemini-3-flash-preview` for multimodal screenshot OCR and project reranking.
   - **Google News RSS Wire**: Free, unlimited real-time press and news aggregation.
-  - **Hunter.io Pattern Synthesizer & Bing Discovery**: $0.00 / free forever with no API limits.
+  - **Hunter.io Pattern Synthesizer & DNS MX Validator**: $0.00 / free forever with no API limits.

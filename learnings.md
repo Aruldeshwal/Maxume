@@ -27,3 +27,12 @@
 ### 7. Windows Installer Process Lifecycle Management
 * On Windows, running background binaries prevent installer overwrites with `ERROR_SHARING_VIOLATION`.
 * NSIS pre-install hooks (`nsExec::Exec 'taskkill.exe /F /IM maxume.exe /IM maxume_backend.exe /T'`) combined with Tauri window destruction listeners guarantee seamless upgrades without file lock errors.
+
+### 8. Resilient Multi-Tier Project Matching
+* Fallback systems should never default to fixed or alphabetical ordering.
+* Pre-scoring candidates with a domain-aware semantic relevance metric guarantees that the best projects for a role (e.g. ML vs. Full Stack) are always surfaced even if cloud LLM endpoints hit rate limits or transient outages.
+
+### 9. Reasoning Model Tag Cleansing in Automated Pipelines
+* Modern reasoning LLMs (such as Qwen 3.6 / DeepSeek variants) emit `<think>...</think>` thoughts in raw output.
+* Automated extraction pipelines must explicitly sanitize thinking tags prior to parsing JSON or inserting text into downstream resumes and cover letters.
+

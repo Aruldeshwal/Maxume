@@ -74,3 +74,14 @@
 * **Status**: Accepted
 * **Context**: Upgrading the application while `maxume_backend.exe` was running in the background caused NSIS installer `ERROR_SHARING_VIOLATION`.
 * **Decision**: Implement `nsExec::Exec 'taskkill.exe /F /IM maxume.exe /IM maxume_backend.exe /T'` in NSIS `customInit` and `customInstall` lifecycle macros to automatically terminate lingering background processes before file copying.
+
+## ADR-016: Multi-Factor Semantic Relevance Scorer for Dynamic Project Matching
+* **Status**: Accepted
+* **Context**: Candidate projects were previously sorted alphabetically, causing the same first 3 projects to be selected sequentially on fallback or API errors.
+* **Decision**: Build a weighted semantic matcher (`score_project_relevance`) scoring candidate tech stacks, directory names, domain keywords, and highlights against the target JD, ensuring dynamic and role-tailored project selection across AI and offline fallbacks.
+
+## ADR-017: Daily API Quota Tracking with Automatic SQLite Increments
+* **Status**: Accepted
+* **Context**: Dashboard quota rings showed static `0/1000 req` and `0/14400 req` without tracking actual cloud API consumption.
+* **Decision**: Create an `api_quotas` table in SQLite, automatically increment counters on successful task completion in `scheduler.py`, expose `GET /api/quotas`, and poll from `App.tsx` every 3 seconds to render live API usage in real time.
+
