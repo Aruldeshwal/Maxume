@@ -231,7 +231,7 @@ def research_company(
                 g_url = "https://api.groq.com/openai/v1/chat/completions"
                 g_headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
                 g_payload = {
-                    "model": "llama-3.3-70b-versatile",
+                    "model": "qwen/qwen3.6-27b",
                     "messages": [
                         {
                             "role": "system",
@@ -247,7 +247,8 @@ def research_company(
                 }
                 g_res = requests.post(g_url, headers=g_headers, json=g_payload, timeout=6.0)
                 if g_res.status_code == 200:
-                    summary_text = g_res.json()["choices"][0]["message"]["content"].strip()
+                    raw_text = g_res.json()["choices"][0]["message"]["content"].strip()
+                    summary_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
             except Exception:
                 pass
 

@@ -16,14 +16,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "sync" | "optimizer" | "history" | "settings">("dashboard");
   const [ollamaStatus, setOllamaStatus] = useState({ online: false, model: "qwen2.5:7b-instruct", vram: "4.8GB / 5.2GB" });
   const [totalApps, setTotalApps] = useState<number>(0);
-  const [quotas] = useState({
+  const [quotas, setQuotas] = useState({
     gemini: { used: 0, total: 1000 },
     groq: { used: 0, total: 14400 },
   });
 
   useEffect(() => {
-    // Check sidecar and Ollama status continuously
-    const checkOllamaStatus = () => {
+    // Check sidecar, Ollama status, and quotas continuously
+    const checkSystemStatus = () => {
       fetch("http://127.0.0.1:8000/api/ollama/status")
         .then((r) => {
           if (!r.ok) throw new Error("Ollama endpoint error");
@@ -41,10 +41,20 @@ export default function App() {
             online: false,
           }));
         });
+
+      // Poll real-time API request quotas
+      fetch("http://127.0.0.1:8000/api/quotas")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && data.gemini && data.groq) {
+            setQuotas(data);
+          }
+        })
+        .catch(() => {});
     };
 
-    checkOllamaStatus();
-    const interval = setInterval(checkOllamaStatus, 3000);
+    checkSystemStatus();
+    const interval = setInterval(checkSystemStatus, 3000);
 
     // Check application count
     fetch("http://127.0.0.1:8000/api/applications")

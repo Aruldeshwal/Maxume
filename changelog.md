@@ -4,6 +4,15 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.4.0] - 2026-08-18 (Semantic Project Matching & Live Quota Tracking)
+
+### Fixed & Enhanced
+- **Multi-Factor Semantic Project Relevance Scorer**: Implemented weighted keyword and domain matching (`score_project_relevance`) against target Job Descriptions, evaluating tech stacks, directory names, and project highlights. Eliminates static alphabetical fallback ordering and ensures resumes dynamically feature the most relevant candidate projects (e.g. ML jobs select `sentiment-analysis-app` & `Maxume`; Full Stack jobs select `Metro-Connect`, `EzNotes`, & `Calvero`).
+- **Real-Time Daily API Quota Tracker**: Built `api_quotas` persistence table in SQLite, wired `scheduler.py` automatic quota incrementing, added `GET /api/quotas` endpoint, and connected live polling to the frontend dashboard (`0/1000 req` and `0/14400 req` now track dynamically in real time).
+- **Active Model Endpoints Update**: Updated candidate model arrays to currently available production endpoints (`gemini-3-flash-preview`, `gemini-3.1-flash-lite-preview`, `qwen/qwen3.6-27b`, `openai/gpt-oss-120b`), resolving upstream 404/503 errors and stripping reasoning `<think>` tags.
+
+---
+
 ## [v1.3.0] - 2026-08-17 (Grounded Hybrid Intelligence & Complete Project SSOT)
 
 ### Added

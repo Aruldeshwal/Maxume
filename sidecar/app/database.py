@@ -3,6 +3,7 @@
 import sqlite3
 import os
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 from pathlib import Path
 from contextlib import contextmanager
 
@@ -75,6 +76,14 @@ CREATE TABLE IF NOT EXISTS company_research_signals (
     guard_check_passed INTEGER DEFAULT 1,   -- 0 if dropped by the hallucination guard's containment check
     fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(application_id) REFERENCES applications(id) ON DELETE CASCADE
+);
+
+-- API Request Quotas Table (Daily Tracking)
+CREATE TABLE IF NOT EXISTS api_quotas (
+    date TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    request_count INTEGER DEFAULT 0,
+    PRIMARY KEY(date, provider)
 );
 """
 
@@ -435,6 +444,44 @@ class Database:
                 (application_id,),
             )
             return [dict(row) for row in cursor.fetchall()]
+
+    # --- API Quota Tracking ---
+    def increment_quota(self, provider: str, count: int = 1) -> int:
+        """Increments the daily request counter for a provider (gemini, groq)."""
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        with self.get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO api_quotas (date, provider, request_count)
+                VALUES (?, ?, ?)
+                ON CONFLICT(date, provider) DO UPDATE SET
+                request_count = request_count + excluded.request_count;
+                """,
+                (today, provider.lower(), count),
+            )
+            conn.commit()
+            cur = conn.execute("SELECT request_count FROM api_quotas WHERE date = ? AND provider = ?", (today, provider.lower()))
+            row = cur.fetchone()
+            return row["request_count"] if row else count
+
+    def get_quotas(self) -> Dict[str, Any]:
+        """Returns daily usage and total capacity for cloud providers."""
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        limits = {
+            "gemini": 1000,
+            "groq": 14400
+        }
+        res = {
+            "gemini": {"used": 0, "total": limits["gemini"]},
+            "groq": {"used": 0, "total": limits["groq"]}
+        }
+        with self.get_connection() as conn:
+            cur = conn.execute("SELECT provider, request_count FROM api_quotas WHERE date = ?", (today,))
+            for row in cur.fetchall():
+                prov = row["provider"].lower()
+                if prov in res:
+                    res[prov]["used"] = row["request_count"]
+        return res
 
 # Default singleton instance
 db = Database()

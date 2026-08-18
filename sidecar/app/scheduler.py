@@ -55,7 +55,13 @@ class TokenAwareScheduler:
             if limiter:
                 await limiter.consume()
             try:
-                return await task()
+                result = await task()
+                try:
+                    from app.database import db
+                    db.increment_quota(provider)
+                except Exception:
+                    pass
+                return result
             except Exception as e:
                 err_str = str(e)
                 if "429" in err_str or "ResourceExceeded" in err_str or "Too Many Requests" in err_str:

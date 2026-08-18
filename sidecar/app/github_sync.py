@@ -258,7 +258,7 @@ def synthesize_high_impact_bullets_ai(
             groq_url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"}
             payload = {
-                "model": "llama-3.3-70b-versatile",
+                "model": "qwen/qwen3.6-27b",
                 "messages": [
                     {"role": "system", "content": "You are a Principal FAANG Resume Architect. Output ONLY a valid JSON array of 3-4 grounded, technically rigorous resume bullet points with zero fake percentages."},
                     {"role": "user", "content": prompt}
@@ -266,29 +266,31 @@ def synthesize_high_impact_bullets_ai(
                 "temperature": 0.25,
                 "max_tokens": 1024
             }
-            res = requests.post(groq_url, headers=headers, json=payload, timeout=3.5)
+            res = requests.post(groq_url, headers=headers, json=payload, timeout=5.0)
             if res.status_code == 200:
                 text = res.json()["choices"][0]["message"]["content"].strip()
-                clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
+                clean_json = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+                clean_json = re.sub(r'^```json\s*|\s*```$', '', clean_json, flags=re.MULTILINE).strip()
                 bullets = json.loads(clean_json)
                 if isinstance(bullets, list) and len(bullets) >= 2:
                     return [b.strip() for b in bullets if isinstance(b, str) and len(b.strip()) > 15][:4]
         except Exception:
             pass
 
-    # 2. Try Gemini 2.5 Flash
+    # 2. Try Gemini 3 Flash
     gemini_key = os.environ.get("GEMINI_API_KEY")
     if gemini_key:
         try:
-            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
+            g_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={gemini_key}"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {"temperature": 0.25, "maxOutputTokens": 1024}
             }
-            res = requests.post(g_url, json=payload, timeout=4.0)
+            res = requests.post(g_url, json=payload, timeout=5.0)
             if res.status_code == 200:
                 text = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                clean_json = re.sub(r'^```json\s*|\s*```$', '', text, flags=re.MULTILINE)
+                clean_json = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+                clean_json = re.sub(r'^```json\s*|\s*```$', '', clean_json, flags=re.MULTILINE).strip()
                 bullets = json.loads(clean_json)
                 if isinstance(bullets, list) and len(bullets) >= 2:
                     return [b.strip() for b in bullets if isinstance(b, str) and len(b.strip()) > 15][:4]

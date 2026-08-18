@@ -7,6 +7,22 @@
 
 ## 1. Project Management Endpoints
 
+### `GET /api/quotas`
+Returns real-time daily usage quotas and limits for zero-cost cloud APIs.
+* **Response**:
+```json
+{
+  "gemini": {
+    "used": 4,
+    "total": 1000
+  },
+  "groq": {
+    "used": 7,
+    "total": 14400
+  }
+}
+```
+
 ### `GET /api/projects`
 Returns all indexed local and GitHub repositories.
 * **Query Parameters**:

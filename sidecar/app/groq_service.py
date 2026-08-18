@@ -11,10 +11,10 @@ from app.company_research import ResearchBrief
 load_dotenv()
 
 CANDIDATE_GROQ_MODELS = [
-    os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile"),
-    "llama-3.1-70b-versatile",
-    "llama-3.1-8b-instant",
-    "mixtral-8x7b-32768"
+    os.environ.get("GROQ_MODEL", "qwen/qwen3.6-27b"),
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "groq/compound"
 ]
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -49,36 +49,40 @@ class GroqService:
             "Content-Type": "application/json"
         }
 
-        for model_name in CANDIDATE_GROQ_MODELS:
-            payload = {
-                "model": model_name,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_GROUNDING_PROMPT},
-                    {"role": "user", "content": user_content}
-                ],
-                "temperature": 0.7,
-                "max_tokens": max_tokens,
-                "stream": False
-            }
-            try:
-                res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=12.0)
-                if res.status_code == 200:
-                    data = res.json()
-                    return data["choices"][0]["message"]["content"].strip()
-                elif res.status_code == 429:
-                    raise RuntimeError(f"Groq 429: {res.text}")
-                elif res.status_code == 400 and ("decommissioned" in res.text or "invalid_request_error" in res.text):
-                    # Try next candidate model
+        async def _call_groq():
+            for model_name in CANDIDATE_GROQ_MODELS:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": SYSTEM_GROUNDING_PROMPT},
+                        {"role": "user", "content": user_content}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": max_tokens,
+                    "stream": False
+                }
+                try:
+                    res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=12.0)
+                    if res.status_code == 200:
+                        data = res.json()
+                        raw_text = data["choices"][0]["message"]["content"].strip()
+                        cleaned_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
+                        return cleaned_text
+                    elif res.status_code == 429:
+                        raise RuntimeError(f"Groq 429: {res.text}")
+                    elif res.status_code in [400, 404] and ("decommissioned" in res.text or "invalid_request_error" in res.text or "not_found" in res.text):
+                        continue
+                    else:
+                        continue
+                except RuntimeError as r_err:
+                    if "429" in str(r_err):
+                        raise r_err
+                except Exception:
                     continue
-                else:
-                    continue
-            except RuntimeError as r_err:
-                if "429" in str(r_err):
-                    raise r_err
-            except Exception:
-                continue
 
-        raise RuntimeError("All Groq candidate models failed or unavailable.")
+            raise RuntimeError("All Groq candidate models failed or unavailable.")
+
+        return await scheduler.execute_task("groq", _call_groq)
 
     async def generate_cover_letter(
         self,

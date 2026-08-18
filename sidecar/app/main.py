@@ -145,6 +145,11 @@ async def open_folder_in_os(payload: OpenFolderRequest):
             raise HTTPException(status_code=500, detail=str(e))
     raise HTTPException(status_code=404, detail=f"Path '{target_path}' does not exist.")
 
+@app.get("/api/quotas")
+async def get_api_quotas():
+    """Returns real-time daily quota usage for Gemini and Groq."""
+    return db.get_quotas()
+
 class ProjectVisibilityRequest(BaseModel):
     is_hidden: Optional[int] = None
 

@@ -14,13 +14,49 @@ load_dotenv()
 
 logger = logging.getLogger("maxume.gemini")
 
-# Production flash models in priority order
+# Production flash models in verified priority order
 CANDIDATE_GEMINI_MODELS = [
-    os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview"),
+    "gemini-3.1-flash-lite-preview",
+    "gemini-flash-latest"
 ]
+
+def score_project_relevance(proj: Dict[str, Any], jd_text: str) -> int:
+    """
+    Computes a weighted relevance score of a project against a Job Description.
+    Evaluates tech stack keywords, project name, summary markdown, and bullets.
+    """
+    jd_lower = jd_text.lower()
+    score = 0
+
+    # 1. Tech stack tokens (highest weight: 14 pts for exact word match, 7 pts for substring)
+    tech_stack = (proj.get("tech_stack") or "").lower()
+    for tech in [t.strip() for t in tech_stack.split(",") if t.strip()]:
+        escaped = re.escape(tech)
+        if re.search(r'\b' + escaped + r'\b', jd_lower):
+            score += 14
+        elif tech in jd_lower:
+            score += 7
+
+    # 2. Project Directory / Name keywords (e.g. sentiment-analysis for NLP/ML)
+    name_words = re.findall(r'[a-zA-Z]+', proj.get("directory_name", "").lower())
+    for w in name_words:
+        if len(w) > 3 and w in jd_lower:
+            score += 10
+
+    # 3. Domain & Architecture Keyword matching in Summary & Bullets
+    summary = (proj.get("summary_markdown") or "").lower()
+    domain_keywords = [
+        "python", "react", "next.js", "typescript", "javascript", "fastapi", "node",
+        "express", "mongodb", "postgresql", "prisma", "sql", "sqlite", "machine learning",
+        "nlp", "sentiment", "scikit", "socket.io", "real-time", "tauri", "rust", "c++",
+        "docker", "cloud", "aws", "azure", "rest", "graphql", "tailwind", "zustand", "clerk"
+    ]
+    for kw in domain_keywords:
+        if kw in jd_lower and kw in summary:
+            score += 4
+
+    return score
 
 class GeminiService:
     def __init__(self, api_key: Optional[str] = None):
@@ -101,6 +137,7 @@ class GeminiService:
                         data = res.json()
                         text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+                        clean_json_str = re.sub(r'<think>.*?</think>', '', clean_json_str, flags=re.DOTALL).strip()
                         try:
                             return json.loads(clean_json_str)
                         except Exception:
@@ -113,7 +150,6 @@ class GeminiService:
                     elif res.status_code == 429:
                         raise RuntimeError(f"Gemini 429: {res.text}")
                     elif res.status_code == 404:
-                        # Try next candidate model
                         continue
                 except RuntimeError as r_err:
                     if "429" in str(r_err):
@@ -133,8 +169,8 @@ class GeminiService:
         mock_response: Optional[List[Dict[str, Any]]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Takes top candidate projects, uses Gemini to select the best 3-4 matches,
-        and selects 3-4 concise, impactful bullet points per project with robust local fallback.
+        Takes candidate projects, evaluates semantic keyword relevance against the Job Description,
+        uses Gemini to select the best 3-4 matches, and selects concise, standout bullet points.
         """
         if mock_response is not None:
             return mock_response[:top_k]
@@ -142,7 +178,14 @@ class GeminiService:
         if not candidate_projects:
             return []
 
-        prefiltered = candidate_projects[:8]
+        # 1. Score ALL candidate projects semantically against the target JD
+        scored_projects = sorted(
+            candidate_projects,
+            key=lambda p: score_project_relevance(p, jd_text),
+            reverse=True
+        )
+
+        prefiltered = scored_projects[:8]
 
         def extract_clean_bullets_from_text(summary_txt: str) -> List[str]:
             valid = []
@@ -170,14 +213,15 @@ class GeminiService:
             return tech, timeline
 
         def get_local_fallback() -> List[Dict[str, Any]]:
+            """Returns the highest scored candidate projects with clean metadata."""
             fallback_list = []
-            for i, p in enumerate(prefiltered[:top_k]):
+            for i, p in enumerate(scored_projects[:top_k]):
                 summary_txt = p.get("summary_markdown", "")
                 extracted_bullets = extract_clean_bullets_from_text(summary_txt)
                 meta_tech, meta_timeline = extract_metadata_from_summary(summary_txt)
                 if not extracted_bullets:
                     extracted_bullets = [
-                        f"Architected core backend architecture and services for {p.get('directory_name', 'project')}.",
+                        f"Architected core engineering architecture and services for {p.get('directory_name', 'project')}.",
                         "Engineered modular data pipelines optimizing response latency.",
                         "Designed responsive UI components achieving fast user iteration cycles."
                     ]
@@ -186,7 +230,7 @@ class GeminiService:
                     "title": p.get("directory_name") or p.get("title", f"Project {i+1}"),
                     "tech_stack": p.get("tech_stack") or meta_tech or "General Engineering",
                     "live_demo_url": p.get("live_demo_url"),
-                    "date": p.get("date") or meta_timeline or "2024 – Present",
+                    "date": p.get("timeline") or p.get("date") or meta_timeline or "2024 – Present",
                     "bullets": extracted_bullets[:3]
                 })
             return fallback_list
@@ -201,7 +245,7 @@ class GeminiService:
                     f"Project {i+1}:\n"
                     f"Name: {p.get('directory_name') or p.get('title')}\n"
                     f"Tech Stack: {p.get('tech_stack') or meta_tech or 'N/A'}\n"
-                    f"Timeline: {p.get('date') or meta_timeline or '2024 – Present'}\n"
+                    f"Timeline: {p.get('timeline') or p.get('date') or meta_timeline or '2024 – Present'}\n"
                     f"URL: {p.get('live_demo_url', '')}\n"
                     f"Highlights:\n{bullets_joined}\n\n"
                 )
@@ -209,7 +253,7 @@ class GeminiService:
             prompt = (
                 "You are an expert technical recruiter and resume strategist. "
                 "Analyze the candidate's projects and select the top 2-3 most relevant projects for the given Job Description. "
-                "For each selected project, provide: 'title', 'tech_stack', 'live_demo_url', 'date', and 3 concise, standout engineering 'bullets'. "
+                "For each selected project, return: 'title', 'tech_stack', 'live_demo_url', 'date', and 3 concise, standout engineering 'bullets'. "
                 "Do NOT include URLs, GitHub links, or labels in the bullet points. "
                 "Output ONLY a valid JSON array of objects with keys: 'title', 'tech_stack', 'live_demo_url', 'date', 'bullets'.\n\n"
                 f"JOB DESCRIPTION:\n{jd_text[:1500]}\n\n"
@@ -231,22 +275,43 @@ class GeminiService:
                         data = res.json()
                         text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                         clean_json_str = re.sub(r'^```json\s*|\s*```$', '', text.strip(), flags=re.MULTILINE)
+                        clean_json_str = re.sub(r'<think>.*?</think>', '', clean_json_str, flags=re.DOTALL).strip()
                         try:
                             ranked = json.loads(clean_json_str)
-                            # Clean each bullet and attach fallback tech/date if missing
-                            for idx, r in enumerate(ranked):
-                                orig_proj = prefiltered[idx] if idx < len(prefiltered) else {}
-                                orig_meta_tech, orig_meta_time = extract_metadata_from_summary(orig_proj.get("summary_markdown", ""))
-                                if not r.get("tech_stack"):
-                                    r["tech_stack"] = orig_proj.get("tech_stack") or orig_meta_tech or "General Engineering"
-                                if not r.get("date"):
-                                    r["date"] = orig_proj.get("date") or orig_meta_time or "2024 – Present"
-                                r["bullets"] = [
+                            # Match each ranked project back to candidate projects by name
+                            matched_results = []
+                            for r in ranked:
+                                r_title = (r.get("title") or "").strip().lower()
+                                matched_proj = next(
+                                    (p for p in prefiltered if p.get("directory_name", "").lower() in r_title or r_title in p.get("directory_name", "").lower()),
+                                    None
+                                )
+                                if matched_proj:
+                                    meta_tech, meta_time = extract_metadata_from_summary(matched_proj.get("summary_markdown", ""))
+                                    tech = r.get("tech_stack") or matched_proj.get("tech_stack") or meta_tech or "General Engineering"
+                                    timeline = r.get("date") or matched_proj.get("timeline") or matched_proj.get("date") or meta_time or "2024 – Present"
+                                    live_url = r.get("live_demo_url") or matched_proj.get("live_demo_url")
+                                else:
+                                    tech = r.get("tech_stack") or "General Engineering"
+                                    timeline = r.get("date") or "2024 – Present"
+                                    live_url = r.get("live_demo_url")
+
+                                bullets_cleaned = [
                                     re.sub(r'^[-*•\d.)\s]+', '', b).replace("**", "").strip()
                                     for b in r.get("bullets", [])
                                     if len(b.strip()) > 15 and not any(b.lower().startswith(x) for x in ["github:", "language:", "live demo:", "url:", "tech stack:"])
                                 ][:3]
-                            return ranked[:top_k]
+
+                                matched_results.append({
+                                    "title": r.get("title"),
+                                    "tech_stack": tech,
+                                    "live_demo_url": live_url,
+                                    "date": timeline,
+                                    "bullets": bullets_cleaned
+                                })
+
+                            if matched_results:
+                                return matched_results[:top_k]
                         except Exception:
                             return get_local_fallback()
                     elif res.status_code == 429:
@@ -259,7 +324,6 @@ class GeminiService:
                 except Exception:
                     continue
 
-            # Graceful local fallback if cloud API is unreachable
             return get_local_fallback()
 
         try:
