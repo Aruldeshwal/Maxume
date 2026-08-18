@@ -45,12 +45,17 @@ Maxume is a tactical desktop and web application that automates technical resume
 * **Real-Time News Wire**: Integrates Google News RSS and live press wires to pull dated news, product launches, and funding rounds from verified Tier 1/Tier 2 publications (*Reuters*, *blog.google*, *TechCrunch*, *CNBC*, etc.).
 * **Deterministic Containment Check**: Post-hoc verification algorithm (`passes_containment_check`) validates that every entity, metric, and claim exists in the source text before entering your cover letter.
 
-### 7. Targeted Real Employee Networking & Hunter.io Email Engine
-* **Zero-Placeholder Discovery**: Queries public search streams specifically for real named individuals with exact personal `/in/` LinkedIn profiles (no generic search filler).
-* **Live DNS MX Deliverability Verification**: Validates company mail servers via Google DNS-over-HTTPS, identifying providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*).
+### 7. Verified Real Employee Networking & Strategic Outreach Engine
+* **4-Stage Employment Authenticity Verifier**: Eliminates false positives, EdTech course participants (*"Student at {Company}"*), bootcamp customers, and corrupt historical dates (e.g. 1900s), surfacing only **100% genuine internal corporate staff**.
+* **3-Archetype Strategic Classifier**: Classifies verified employees into actionable networking tiers:
+  - 👑 **Decision Maker** (*Founders, CEOs, CTOs, Engineering Managers, Tech Leads*) $\rightarrow$ Direct technical project alignment.
+  - 🎯 **Talent Gateway** (*Technical Recruiters, Talent Partners, HR Specialists*) $\rightarrow$ Candidate requisition and stack match.
+  - 🌐 **Network Bridge** (*Team Engineers, Peers, Alumni*) $\rightarrow$ Low-pressure 2nd-degree network expansion.
+* **Strict $\le 200$-Character LinkedIn Connection Note Guard**: Generates punchy outreach notes tailored to the exact archetype that strictly fit within LinkedIn's free-tier 200-character connection invite limit (with live `📝 142/200 chars` badges and deterministic safety guards).
+* **Single Batched Groq Request**: Synthesizes notes for all discovered contacts in **1 single batched LLM request**, reducing quota burn by 66%.
+* **Live DNS MX Deliverability Verification**: Validates company mail servers via Google DNS-over-HTTPS, detecting providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*) and displaying deliverability confidence (*98% Confirmed*).
 * **Hunter.io Corporate Email Permutations**: Generates standard corporate email variations (`first.last@company.com`, `first@company.com`, `f_initial.last@company.com`) with 1-click copy and pre-filled `mailto:` compose triggers.
 * **Multi-Channel Contact Action Bar**: Provides direct Google Contact Dork, GitHub User Search, and Twitter/X lookup buttons to bypass LinkedIn connection gates.
-* **75-Word Referral Pitches**: Generates personalized, concise outreach messages ready to copy and send with a single click.
 
 ### 8. Seamless Multi-Screenshot & Clipboard OCR (`Ctrl+V`)
 * **Instant Clipboard Pasting**: Press `Ctrl+V` anywhere in the Optimizer tab to paste job description screenshots directly from your clipboard (e.g. `Win + Shift + S`).

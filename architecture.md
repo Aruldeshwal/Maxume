@@ -62,9 +62,9 @@ To minimize cloud API usage, preserve privacy, and maintain a **$0/month permane
    * *Engine*: Google News RSS Wire + Groq / Gemini Flash.
    * *Execution*: Aggregates dated press signals and funding announcements. A deterministic post-hoc containment check (`passes_containment_check`) rejects ungrounded claims.
 
-5. **Targeted Employee Networking & Hunter.io Email Engine**
-   * *Engine*: Public Search Decoders + Google DNS-over-HTTPS.
-   * *Execution*: Discovers real named employees with direct `/in/` personal profiles, runs live DNS MX validation to verify mail routing servers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*), and synthesizes standard corporate email permutations.
+5. **Verified Real Employee Networking & Strategic Outreach Engine**
+   * *Engine*: `networking_engine.py` (Multi-Stream Decoders + Google DNS-over-HTTPS + Batched Groq).
+   * *Execution*: Enforces a 4-Stage Verification Filter (student/customer blacklist, 1800s/1900s timeline sanity check, corporate preposition verification) to discover 100% genuine internal corporate staff. Classifies contacts into 3 Strategic Archetypes (`👑 Decision Maker`, `🎯 Talent Gateway`, `🌐 Network Bridge`), verifies mail routing via DNS MX (*Zoho Mail*, *Google Workspace*, *Microsoft 365*), and synthesizes strict $\le 200$-character LinkedIn connection notes in **1 single batched Groq request** ($0 search cost, 66% quota savings).
 
 6. **Single-Page Paragraph-Level DOCX Compilation**
    * *Engine*: `python-docx` + raw Word OXML XML relationships.

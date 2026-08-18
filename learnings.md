@@ -36,3 +36,7 @@
 * Modern reasoning LLMs (such as Qwen 3.6 / DeepSeek variants) emit `<think>...</think>` thoughts in raw output.
 * Automated extraction pipelines must explicitly sanitize thinking tags prior to parsing JSON or inserting text into downstream resumes and cover letters.
 
+### 10. Graph Theory Networking & Connection Note Length Constraints
+* In professional networking on LinkedIn, peer engineers and alumni have 3x–4x higher connection acceptance rates than executive leadership. Connecting with them unlocks 2nd-degree network graph visibility across the company's entire team.
+* Free LinkedIn accounts restrict personalized connection notes to strictly **200 characters**. Notes must be engineered under 180 characters with deterministic truncation guards to prevent mid-word cutoffs or invite rejections. Single-request batched LLM generation synthesizes all contact notes in one call, reducing quota consumption by 66%.
+

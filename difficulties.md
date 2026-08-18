@@ -48,3 +48,7 @@
 * **Difficulty**: The frontend quota rings displayed static initial state without reflecting actual cloud API calls.
 * **Resolution**: Added an `api_quotas` table in SQLite, connected automatic increments into `scheduler.execute_task`, and polled `GET /api/quotas` every 3 seconds to reflect live usage numbers.
 
+### 13. Search Stream Pollution from EdTech/Bootcamp Course Participants and Corrupt Dates
+* **Difficulty**: Searching for employees at EdTech providers (e.g. Meritshot) returned course participants (*"Student at Meritshot"*) or troll profiles with corrupt 1900s dates rather than genuine internal hiring staff. Additionally, generated outreach pitches exceeded LinkedIn's 200-character free-tier connection invite limit.
+* **Resolution**: Engineered a 4-Stage Verification Filter in `networking_engine.py` (student/customer blacklist, 1800s/1900s timeline filter, corporate preposition matching), classified contacts into 3 Strategic Archetypes (`👑 Decision Maker`, `🎯 Talent Gateway`, `🌐 Network Bridge`), and enforced deterministic $\le 200$-character note length bounds in a single batched Groq request.
+

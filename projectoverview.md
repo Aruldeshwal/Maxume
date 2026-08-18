@@ -50,9 +50,11 @@ graph TD
 - **Real-Time Daily API Quota Tracker**: Persists daily request counts in SQLite (`api_quotas` table) and exposes `GET /api/quotas`, updating the UI dashboard rings live as runs execute.
 - **Real-Time News Wire**: Aggregates real-time news, launches, and funding rounds from Google News RSS and direct company announcements.
 - **3-Stage Hallucination Containment**: Deterministic verification (`passes_containment_check`) rejects ungrounded claims.
-- **Real Person Discovery**: Queries public search streams to find actual current employees and leaders with exact personal `/in/` LinkedIn profiles (no generic search filler).
+- **4-Stage Employment Authenticity Verifier**: Eliminates EdTech course participants, bootcamp students, and corrupt dates (1800s/1900s), discovering genuine internal corporate employees.
+- **3-Archetype Strategic Classifier**: Segregates contacts into `👑 Decision Maker`, `🎯 Talent Gateway`, and `🌐 Network Bridge`.
+- **Strict $\le 200$-Character LinkedIn Connection Note Guard**: Synthesizes notes under 180 chars with deterministic bounds to fit LinkedIn's 200-char free invite limit in 1 single batched Groq request.
 - **Hunter.io-Style Email Engine**: Generates corporate email permutations (`first.last@company.com`, `first@company.com`, `f.last@company.com`) from the company domain with 1-click copy and pre-filled `mailto:` compose links.
-- **DNS-over-HTTPS MX Deliverability**: Validates company mail servers via Google DNS-over-HTTPS, identifying mail host providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*).
+- **DNS-over-HTTPS MX Deliverability**: Validates company mail servers via Google DNS-over-HTTPS, identifying mail host providers (*Zoho Mail*, *Google Workspace*, *Microsoft 365*) and confidence ratings.
 - **Multi-Channel Contact Bar**: Provides direct Google Contact Dork, GitHub User Search, and Twitter/X lookup buttons to bypass LinkedIn connection gates.
 
 ---

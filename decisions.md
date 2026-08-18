@@ -90,4 +90,9 @@
 * **Context**: Multi-stack job descriptions (e.g. React/Next.js + Python/FastAPI) suffered from tech-stack redundancy when greedy matching selected 3 pure React projects, leaving Python/FastAPI completely unrepresented.
 * **Decision**: Implement Maximal Marginal Relevance (MMR) where each candidate project is evaluated for its marginal coverage gain of unrepresented JD skills with a redundancy penalty for already-covered technologies, bounded strictly to skills explicitly requested in the JD.
 
+## ADR-019: 4-Stage Employment Authenticity Filtering & <= 200-Character LinkedIn Outreach
+* **Status**: Accepted
+* **Context**: Raw public search streams often return customers, course participants (e.g. *"Student at {Company}"* for EdTech providers), or bogus profiles with corrupt 1900s dates, and generic outreach notes exceeded LinkedIn's 200-character free connection invite limit.
+* **Decision**: Implement a 4-Stage Verification Filter in `networking_engine.py` to discard non-employee noise, classify verified employees into 3 Strategic Archetypes (`👑 Decision Maker`, `🎯 Talent Gateway`, `🌐 Network Bridge`), and synthesize tailored notes strictly under 180 characters with deterministic length guards in a single batched Groq request.
+
 

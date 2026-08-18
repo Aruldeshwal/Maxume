@@ -64,18 +64,41 @@ export const ContactCard: React.FC<ContactCardProps> = ({
       )}`
     : undefined;
 
+  // Determine Archetype styling
+  const archetypeText = contact.employee_tagline?.includes("[👑") || (contact as any).archetype?.includes("Decision Maker")
+    ? "👑 Decision Maker"
+    : contact.employee_tagline?.includes("[🎯") || (contact as any).archetype?.includes("Talent Gateway")
+    ? "🎯 Talent Gateway"
+    : "🌐 Network Bridge";
+
+  const cleanHeadline = (contact.employee_tagline || `Professional at ${companyName}`)
+    .replace(/^\[.*?\]\s*/, '');
+
+  const charCount = contact.referral_message_draft ? contact.referral_message_draft.length : 0;
+
   return (
     <div className="p-3.5 rounded-lg bg-background-card border border-border-subtle hover:border-border-strong transition-all space-y-3">
-      {/* 1. Header: Name, Tagline, Profile Link & MX Badge */}
+      {/* 1. Header: Name, Archetype Badge, Tagline, Profile Link */}
       <div className="flex items-start justify-between space-x-3">
-        <div className="flex items-center space-x-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-zinc-800 border border-border-subtle flex items-center justify-center text-text-secondary flex-shrink-0">
+        <div className="flex items-start space-x-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-zinc-800 border border-border-subtle flex items-center justify-center text-text-secondary flex-shrink-0 mt-0.5">
             <User className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="min-w-0">
-            <div className="text-xs font-bold text-white tracking-tight truncate">{contact.employee_name}</div>
+          <div className="min-w-0 space-y-1">
+            <div className="flex items-center space-x-2 flex-wrap">
+              <span className="text-xs font-bold text-white tracking-tight truncate">{contact.employee_name}</span>
+              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold border ${
+                archetypeText.includes("Decision Maker")
+                  ? "bg-amber-950/60 text-amber-300 border-amber-800/50"
+                  : archetypeText.includes("Talent Gateway")
+                  ? "bg-sky-950/60 text-sky-300 border-sky-800/50"
+                  : "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
+              }`}>
+                {archetypeText}
+              </span>
+            </div>
             <div className="text-[11px] text-text-secondary leading-snug line-clamp-2">
-              {contact.employee_tagline || `Professional at ${companyName}`}
+              {cleanHeadline}
             </div>
           </div>
         </div>
@@ -224,7 +247,13 @@ export const ContactCard: React.FC<ContactCardProps> = ({
       {/* 5. Referral Pitch Generator & Copy */}
       {contact.referral_message_draft ? (
         <div className="pt-2 border-t border-border-subtle space-y-2">
-          <div className="p-2 rounded bg-background-deep text-[11px] font-mono text-text-secondary leading-relaxed border border-border-subtle/60 max-h-24 overflow-y-auto">
+          <div className="flex items-center justify-between text-[10px] font-mono">
+            <span className="text-zinc-400">LinkedIn Note Draft:</span>
+            <span className={`px-1.5 py-0.2 rounded font-semibold ${charCount <= 200 ? "text-emerald-400 bg-emerald-950/40" : "text-amber-400 bg-amber-950/40"}`}>
+              📝 {charCount}/200 chars
+            </span>
+          </div>
+          <div className="p-2 rounded bg-background-deep text-[11px] font-mono text-text-secondary leading-relaxed border border-border-subtle/60 max-h-24 overflow-y-auto select-all">
             {contact.referral_message_draft}
           </div>
           <button

@@ -528,14 +528,24 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         except Exception:
             pass
 
-    # 7. Employee Networking Discovery
-    contacts = await lookup_company_employees(
-        company_name=company_clean,
-        company_url=payload.company_url,
-        company_domain=payload.company_domain
+    # 7. Verified Employee Networking Discovery ($0 search cost)
+    from app.networking_engine import search_verified_company_employees, generate_batched_200char_pitches
+    raw_contacts = await asyncio.to_thread(
+        search_verified_company_employees,
+        company_clean,
+        role_clean
     )
 
-    # 8. SQLite Database Persistence
+    # 8. Single Batched Groq Request for <= 200 Character Outreach Notes
+    contacts = await asyncio.to_thread(
+        generate_batched_200char_pitches,
+        raw_contacts,
+        company_clean,
+        role_clean,
+        bullet_highlights
+    )
+
+    # 9. SQLite Database Persistence
     app_id = db.create_application(
         company_name=company_clean,
         role_title=role_clean,
@@ -562,26 +572,18 @@ async def optimize_application(payload: OptimizeApplicationRequest):
                 guard_check_passed=1 if s.guard_check_passed else 0
             )
 
-    # Persist networking contacts with generated referral drafts
+    # Persist networking contacts with generated 200-char referral drafts
     saved_contacts = []
     for c in contacts:
-        referral_pitch = await groq_service.generate_referral_pitch(
-            employee_name=c["employee_name"],
-            employee_tagline=c["employee_tagline"],
-            company_name=company_clean,
-            role_title=role_clean,
-            resume_bullets=bullet_highlights,
-            research_brief=research_brief
-        )
         cid = db.add_networking_contact(
             application_id=app_id,
-            employee_name=c["employee_name"],
-            employee_tagline=c["employee_tagline"],
+            employee_name=c["name"],
+            employee_tagline=f"[{c.get('archetype', 'Team')}] {c.get('tagline', '')}",
             profile_url=c["profile_url"],
-            referral_message_draft=referral_pitch,
+            referral_message_draft=c.get("referral_pitch"),
             referral_status="Not Contacted",
-            email_primary=c.get("email_primary"),
-            email_alternatives=c.get("email_alternatives"),
+            email_primary=c.get("primary_email"),
+            email_alternatives=c.get("alternative_emails"),
             google_dork_url=c.get("google_dork_url"),
             github_search_url=c.get("github_search_url"),
             twitter_search_url=c.get("twitter_search_url"),
@@ -589,7 +591,9 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         saved_contacts.append({
             **c,
             "id": cid,
-            "referral_message_draft": referral_pitch
+            "employee_name": c["name"],
+            "employee_tagline": c.get("tagline"),
+            "referral_message_draft": c.get("referral_pitch")
         })
 
     return {
