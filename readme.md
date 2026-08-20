@@ -41,11 +41,16 @@ Maxume is a tactical desktop and web application that automates technical resume
 * **ATS-Optimized Categories**: Groups skills into *Programming Languages*, *Frameworks & Web*, *Databases & Cloud/DevOps*, and *Core Competencies & AI*.
 * **JD Relevance Ranking**: Prioritizes candidate skills requested by the target Job Description at the front of each category without hallucinating unrepresented tech (e.g. Go, Rust).
 
-### 6. Company Technical Dossier & Architectural Bridge Personalization
+### 6. Company Technical Dossier, Pitch Style Selector & Humanized Engineering Voice
 * **Zero-Cost Company Meta Ingestion**: Automatically scrapes landing page metadata, OpenGraph tags, and hero value propositions ($0 API cost) to extract what the company actually builds and who their customers are.
-* **JD Architectural Challenge Deconstructor**: Dissects Job Description text to identify the company's core engineering bottlenecks (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput API Performance, Client-Side State Synchronization, Local-First System Design*).
-* **The Architectural Bridge Framework (High-Perceived-Value Pitch)**: Generates 280-word executive cover letters and 120-word application emails that draw direct 1-to-1 parallels between the candidate's verified codebase projects (`Maxume`, `Metro-Connect`, `EzNotes`) and the company's real engineering challenges without generic fluff or fake percentage metrics.
-* **Grounded News & Hallucination Guard**: Cross-references verified press milestones and funding rounds from Tier 1/Tier 2 publications (*Reuters*, *TechCrunch*, *Bloomberg*) with deterministic containment verification (`passes_containment_check`).
+* **JD Architectural Challenge Deconstructor**: Dissects Job Description text to identify core engineering bottlenecks (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs, Complex State Synchronization*).
+* **3 Toggleable Pitch Styles in UI**:
+  - 🛠️ **Engineering Deep-Dive** *(For Tech Leads & EMs)*: Conversational narrative explaining what broke, why concurrency/state sync was hard, and how exact mechanisms solved it.
+  - ⚡ **3-Part Scannable Matrix** *(For Recruiters & Quick Scans)*: Clean structure with bold project headers, live URLs, and technical bullet points.
+  - 🎯 **Executive Cold Pitch** *(For Founders & VPs)*: 4-sentence ultra-dense high-signal outreach with 1 live link and a frictionless 10-minute sync invite.
+* **Active Live Demo & GitHub Link Embeddings**: Naturally embeds candidate project repository URLs and live deployment links (`https://github.com/Aruldeshwal/Maxume`, `https://metro-connect.vercel.app`) in both cover letters and emails.
+* **Anti-AI Buzzword Blacklist & Humanized Tone**: Strictly bans robotic filler (*"delve", "testament", "tapestry", "foster", "synergy", "spearheaded", "seamless", "pivotal", "cognitive friction", "pedagogical flow"*) in favor of authentic developer storytelling.
+* **Instant In-App Pitch Regeneration**: Switch between pitch styles in real time with the sub-1.5s `POST /api/regenerate-copy` endpoint.
 
 ### 7. Verified Real Employee Networking & Strategic Outreach Engine
 * **4-Stage Employment Authenticity Verifier**: Eliminates false positives, EdTech course participants (*"Student at {Company}"*), bootcamp customers, and corrupt historical dates (e.g. 1900s), surfacing only **100% genuine internal corporate staff**.

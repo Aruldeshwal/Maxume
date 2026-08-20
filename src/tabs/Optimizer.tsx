@@ -39,6 +39,10 @@ export const Optimizer: React.FC = () => {
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Pitch Style Selector State
+  const [pitchStyle, setPitchStyle] = useState<"deep_dive" | "scannable" | "executive">("deep_dive");
+  const [isRegeneratingCopy, setIsRegeneratingCopy] = useState<boolean>(false);
+
   // Settings & Guardrails
   const [personalizationEnabled, setPersonalizationEnabled] = useState<boolean>(true);
   const [numCtx, setNumCtx] = useState<number>(2048);
@@ -211,6 +215,7 @@ export const Optimizer: React.FC = () => {
           jd_raw_text: jdText.trim() || undefined,
           screenshots_base64: uploadedImages.length > 0 ? uploadedImages.map((img) => img.base64) : undefined,
           personalization_enabled: personalizationEnabled,
+          pitch_style: pitchStyle,
         }),
       });
 
@@ -226,7 +231,7 @@ export const Optimizer: React.FC = () => {
         }
 
         addLog("Ollama", "Swapping Resume Section {{PROJECTS}} & {{SKILLS}} with clickable live hyperlinks...", "info");
-        addLog("Groq", "Compiling grounded Cover Letter, Referral Pitch & Email via Llama 3.3 70B...", "info");
+        addLog("Groq", "Compiling humanized Cover Letter & Outreach Email with authentic engineering mechanics...", "info");
         addLog("Google CSE", `Discovered ${data.networking_contacts?.length || 0} employee profiles for networking`, "info");
         addLog("Completed", `Pack successfully compiled to ${data.output_folder || "/output"}`, "success");
 
@@ -239,6 +244,40 @@ export const Optimizer: React.FC = () => {
       addLog("Error", `Pipeline exception: ${err.message}`, "error");
     } finally {
       setIsOptimizing(false);
+    }
+  };
+
+  const handleSwitchPitchStyle = async (newStyle: "deep_dive" | "scannable" | "executive") => {
+    setPitchStyle(newStyle);
+    if (activeResult) {
+      setIsRegeneratingCopy(true);
+      try {
+        const res = await fetch("http://127.0.0.1:8000/api/regenerate-copy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            company_name: companyName || activeResult.research_brief?.company_name || "Target Company",
+            role_title: roleTitle || "Software Engineer",
+            pitch_style: newStyle,
+            company_url: companyUrl.trim() || undefined,
+            company_domain: companyDomain.trim() || undefined,
+            jd_raw_text: jdText.trim() || undefined,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveResult((prev: any) => ({
+            ...prev,
+            cover_letter: data.cover_letter,
+            outreach_email: data.outreach_email,
+            pitch_style: newStyle,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to regenerate copy with new style:", err);
+      } finally {
+        setIsRegeneratingCopy(false);
+      }
     }
   };
 
@@ -588,7 +627,59 @@ export const Optimizer: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-3 rounded bg-background-deep font-mono text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto">
+            {/* Pitch Style Selector Toolbar for Copy */}
+            {(activeTabSub === "cover_letter" || activeTabSub === "email") && (
+              <div className="flex items-center justify-between p-2 rounded bg-zinc-900/90 border border-border-subtle flex-wrap gap-2">
+                <div className="flex items-center space-x-1.5 text-[11px] font-mono text-zinc-400">
+                  <Sliders className="w-3 h-3 text-legion-crimson" />
+                  <span>Pitch Tone &amp; Style:</span>
+                  {isRegeneratingCopy && <span className="text-amber-400 animate-pulse text-[10px]">(Synthesizing...)</span>}
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={() => handleSwitchPitchStyle("deep_dive")}
+                    disabled={isRegeneratingCopy}
+                    className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                      pitchStyle === "deep_dive"
+                        ? "bg-rose-950 text-rose-300 border border-rose-800/80 font-bold"
+                        : "text-text-secondary hover:text-white bg-zinc-800/60"
+                    }`}
+                  >
+                    🛠️ Engineering Deep-Dive
+                  </button>
+                  <button
+                    onClick={() => handleSwitchPitchStyle("scannable")}
+                    disabled={isRegeneratingCopy}
+                    className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                      pitchStyle === "scannable"
+                        ? "bg-amber-950 text-amber-300 border border-amber-800/80 font-bold"
+                        : "text-text-secondary hover:text-white bg-zinc-800/60"
+                    }`}
+                  >
+                    ⚡ 3-Part Scannable
+                  </button>
+                  <button
+                    onClick={() => handleSwitchPitchStyle("executive")}
+                    disabled={isRegeneratingCopy}
+                    className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                      pitchStyle === "executive"
+                        ? "bg-purple-950 text-purple-300 border border-purple-800/80 font-bold"
+                        : "text-text-secondary hover:text-white bg-zinc-800/60"
+                    }`}
+                  >
+                    🎯 Executive Cold Pitch
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 rounded bg-background-deep font-mono text-xs text-text-primary leading-relaxed whitespace-pre-wrap max-h-80 overflow-y-auto relative">
+              {isRegeneratingCopy && (
+                <div className="absolute inset-0 bg-background-deep/80 backdrop-blur-[1px] flex items-center justify-center space-x-2 text-xs font-mono text-emerald-400">
+                  <Sparkles className="w-4 h-4 animate-spin text-legion-crimson" />
+                  <span>Synthesizing Humanized Pitch via Groq LPU...</span>
+                </div>
+              )}
               {activeTabSub === "cover_letter" && activeResult.cover_letter}
               {activeTabSub === "email" && activeResult.outreach_email}
               {activeTabSub === "resume" && (

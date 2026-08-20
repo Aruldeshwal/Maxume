@@ -100,4 +100,9 @@
 * **Context**: RSS-based news searches frequently returned unrelated articles or nothing for mid-tier companies, and cover letters sounded generic rather than deeply technically tailored.
 * **Decision**: Ingest company landing page metadata and OpenGraph descriptions ($0 cost) to extract product missions and industry categories, deconstruct JD text into core engineering priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs*), and structure cover letters and emails around the Architectural Bridge Framework to directly map verified candidate projects to company challenges.
 
+## ADR-021: Humanized Engineering Voice, 3 Pitch Styles & Live Link Embeddings
+* **Status**: Accepted
+* **Context**: Overly compressed word counts and generic AI prompts produced unpolished, fuzzy copy saturated with robotic buzzwords (*"cognitive friction", "fostering synergies"*), and users had no easy way to target different hiring personas.
+* **Decision**: Enforce a strict Anti-AI buzzword blacklist, adopt natural *problem $\rightarrow$ friction $\rightarrow$ fix* engineering storytelling, embed active GitHub/live demo links directly into copy, and provide 3 switchable UI pitch styles (**Engineering Deep-Dive**, **3-Part Scannable Matrix**, **Executive Cold Pitch**) with sub-1.5s live regeneration via `POST /api/regenerate-copy`.
+
 

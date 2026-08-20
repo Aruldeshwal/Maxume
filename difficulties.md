@@ -56,3 +56,7 @@
 * **Difficulty**: Relying solely on RSS article titles caused keyword collisions (e.g. unrelated news mentioning the company name) and generated generic cover letters with superficial hooks that failed to convey deep technical value.
 * **Resolution**: Replaced shallow news scraping with a multi-layered Company Technical Dossier (`company_research.py`) that extracts landing page OpenGraph metadata ($0 cost), deconstructs JD technical bottlenecks (*concurrency, atomic transactions, state management*), and generates executive cover letters using the Architectural Bridge Framework to directly map verified candidate projects to company priorities.
 
+### 15. Robotic AI Word-Count Compression and Stiff Pitch Tone
+* **Difficulty**: Aggressive word-count bounds forced the LLM to compress natural explanations into dense robotic jargon (*"fostering synergies", "cognitive friction", "pedagogical flow"*), resulting in fuzzy, unpolished text that failed to feel human.
+* **Resolution**: Replaced word-count limits with structural storytelling rules (*problem $\rightarrow$ friction $\rightarrow$ fix*), implemented an Anti-AI buzzword blacklist in `groq_service.py`, naturally embedded verified GitHub/live demo links, and built a UI Pitch Style Selector (**Engineering Deep-Dive**, **3-Part Scannable Matrix**, **Executive Cold Pitch**) with sub-1.5s live regeneration.
+

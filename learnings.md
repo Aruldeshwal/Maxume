@@ -44,3 +44,7 @@
 * High-perceived-value personalization does not come from reciting random news headlines; it comes from **technical empathy**.
 * By dissecting a company's product domain and extracting core engineering challenges from the JD (*concurrency, atomic transactions, state sync, latency*), cover letters and outreach emails can establish a direct architectural bridge explaining how the candidate solved those exact problems in their verified codebase projects.
 
+### 12. Humanized Engineering Storytelling Over Word-Count Squeezing
+* Forcing strict token or word counts onto LLMs induces "buzzword salad," where sentences become dense, unnatural, and robotic.
+* Structuring generation around natural developer storytelling (*what broke $\rightarrow$ why concurrency/state sync was hard $\rightarrow$ how exact mechanisms solved it*) paired with an Anti-AI buzzword blacklist produces persuasive, authentic text that sounds like an engineer speaking to another engineer over coffee. Embedding active GitHub and live deployment links provides immediate 1-click proof of work.
+

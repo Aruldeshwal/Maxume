@@ -104,6 +104,15 @@ class OptimizeApplicationRequest(BaseModel):
     master_resume_path: Optional[str] = None
     output_dir: Optional[str] = None
     personalization_enabled: Optional[bool] = True
+    pitch_style: Optional[str] = "deep_dive"
+
+class RegenerateCopyRequest(BaseModel):
+    company_name: str
+    role_title: str
+    pitch_style: str = "deep_dive"
+    company_url: Optional[str] = None
+    company_domain: Optional[str] = None
+    jd_raw_text: Optional[str] = None
 
 # --- Endpoints ---
 
@@ -490,19 +499,23 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         for b in p.get("bullets", [])[:2]:
             bullet_highlights.append(b)
 
-    # 6. Groq Creative Generation
+    # 6. Groq Creative Generation (Humanized Engineering Voice)
     cover_letter = await groq_service.generate_cover_letter(
         company_name=company_clean,
         role_title=role_clean,
         resume_bullets=bullet_highlights,
-        research_brief=research_brief
+        projects=ranked_projects,
+        research_brief=research_brief,
+        pitch_style=payload.pitch_style or "deep_dive"
     )
 
     outreach_email = await groq_service.generate_application_email(
         company_name=company_clean,
         role_title=role_clean,
         resume_bullets=bullet_highlights,
-        research_brief=research_brief
+        projects=ranked_projects,
+        research_brief=research_brief,
+        pitch_style=payload.pitch_style or "deep_dive"
     )
 
     # Write copy files to output folder with file-lock resilience
@@ -607,10 +620,56 @@ async def optimize_application(payload: OptimizeApplicationRequest):
         "email_path": email_file,
         "cover_letter": cover_letter,
         "outreach_email": outreach_email,
+        "pitch_style": payload.pitch_style or "deep_dive",
         "personalization_status": personalization_status,
         "research_brief": research_brief.model_dump() if research_brief else None,
         "networking_contacts": saved_contacts,
         "ranked_projects": ranked_projects
+    }
+
+@app.post("/api/regenerate-copy")
+async def regenerate_copy(payload: RegenerateCopyRequest):
+    """Regenerates humanized cover letter and outreach email with a selected pitch style in <1.5s."""
+    all_projects = db.list_projects(include_hidden=False)
+    ranked_projects = await gemini_service.rerank_projects_for_jd(
+        jd_text=payload.jd_raw_text or "",
+        candidate_projects=all_projects,
+        top_k=3
+    )
+    research_brief = research_company(
+        company_name=payload.company_name,
+        company_url=payload.company_url,
+        company_domain=payload.company_domain,
+        jd_text=payload.jd_raw_text,
+        recency_days=90,
+        max_signals=3
+    )
+    bullet_highlights = []
+    for p in ranked_projects:
+        for b in p.get("bullets", [])[:2]:
+            bullet_highlights.append(b)
+
+    cover_letter = await groq_service.generate_cover_letter(
+        company_name=payload.company_name,
+        role_title=payload.role_title,
+        resume_bullets=bullet_highlights,
+        projects=ranked_projects,
+        research_brief=research_brief,
+        pitch_style=payload.pitch_style
+    )
+    outreach_email = await groq_service.generate_application_email(
+        company_name=payload.company_name,
+        role_title=payload.role_title,
+        resume_bullets=bullet_highlights,
+        projects=ranked_projects,
+        research_brief=research_brief,
+        pitch_style=payload.pitch_style
+    )
+    return {
+        "status": "success",
+        "pitch_style": payload.pitch_style,
+        "cover_letter": cover_letter,
+        "outreach_email": outreach_email
     }
 
 if __name__ == "__main__":

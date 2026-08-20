@@ -122,7 +122,8 @@ Processes job description text and/or screenshots, reranks top candidate project
   "company_domain": "@meritshot.com",
   "jd_raw_text": "Looking for a full stack engineer with React, Next.js, and MongoDB experience...",
   "screenshots_base64": ["data:image/png;base64,..."],
-  "personalization_enabled": true
+  "personalization_enabled": true,
+  "pitch_style": "deep_dive"
 }
 ```
 * **Response**:
@@ -134,8 +135,9 @@ Processes job description text and/or screenshots, reranks top candidate project
   "resume_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_Resume.docx",
   "cover_letter_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_CoverLetter.txt",
   "email_path": "C:/Users/aruld/OneDrive/Desktop/Job-Content/Meritshot/Meritshot_Email.txt",
-  "cover_letter": "Dear Hiring Team at Meritshot...",
-  "outreach_email": "Subject: Application for Software Engineer...",
+  "cover_letter": "Hi team at Meritshot, I’ve been following how Meritshot is scaling...",
+  "outreach_email": "Subject: Full-Stack Engineer / Metro-Connect project -> Meritshot...",
+  "pitch_style": "deep_dive",
   "personalization_status": "Personalized",
   "research_brief": {
     "status": "FOUND",

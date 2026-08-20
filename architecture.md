@@ -58,9 +58,9 @@ To minimize cloud API usage, preserve privacy, and maintain a **$0/month permane
    * *Engine*: Google Gemini 3 Flash (`gemini-3-flash-preview`).
    * *Execution*: Compresses screenshots via Pillow and extracts full job descriptions, followed by semantic reranking of candidate projects.
 
-4. **Company Technical Dossier & Architectural Bridge Personalization**
+4. **Company Technical Dossier, Pitch Style Engine & Humanized Outreach**
    * *Engine*: `company_research.py` + `groq_service.py`.
-   * *Execution*: Ingests landing page metadata and OpenGraph descriptions ($0 cost) to extract company missions and industry domains (*EdTech, DevTools, AI/ML, FinTech*). Deconstructs JD text into core architectural priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs*). Generates 280-word executive cover letters and 120-word application emails drawing 1-to-1 parallels between candidate projects and company bottlenecks without generic filler. Cross-references verified press signals with deterministic containment verification (`passes_containment_check`).
+   * *Execution*: Ingests landing page metadata and OpenGraph descriptions ($0 cost) to extract company missions and industry domains (*EdTech, DevTools, AI/ML, FinTech*). Deconstructs JD text into core architectural priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs, Complex State Synchronization*). Dynamically generates 3 distinct pitch styles (**Engineering Deep-Dive**, **3-Part Scannable Matrix**, or **Executive Cold Pitch**) with an Anti-AI buzzword blacklist and embedded live demo/GitHub links. Instant in-app regeneration supported via `POST /api/regenerate-copy` (<1.5s).
 
 5. **Verified Real Employee Networking & Strategic Outreach Engine**
    * *Engine*: `networking_engine.py` (Multi-Stream Decoders + Google DNS-over-HTTPS + Batched Groq).

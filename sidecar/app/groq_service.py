@@ -1,7 +1,7 @@
-"""Groq High-Speed LPU Creative Generation Service with Strict Grounding Constraints (apicontracts.md §3)."""
+"""Groq High-Speed LPU Creative Generation Service with Humanized Tone & Anti-AI Blacklist."""
 
 import os
-import json
+import re
 import requests
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
@@ -19,25 +19,67 @@ CANDIDATE_GROQ_MODELS = [
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-SYSTEM_GROUNDING_PROMPT = (
-    "You are an expert technical resume coach and career counselor. "
-    "Generate persuasive, professional job application assets. "
-    "You may only reference the company facts listed under RESEARCH_BRIEF below; "
-    "if RESEARCH_BRIEF is empty or NO_SIGNALS_FOUND, write a strong letter based on the role and candidate background alone "
-    "and do not invent or imply any company-specific news, launches, or milestones."
+SYSTEM_HUMAN_ENGINEER_PROMPT = (
+    "You are an articulate, pragmatic software engineer writing directly to another engineer or hiring manager. "
+    "You communicate casually yet technically, with zero corporate jargon, zero marketing fluff, and zero robotic filler. "
+    "You speak openly about real engineering friction, race conditions, architecture decisions, and concrete solutions. "
+    "You never invent fake metrics or hallucinate technologies."
 )
+
+ANTI_AI_FORBIDDEN_BUZZWORDS = [
+    "delve", "testament", "tapestry", "beacon", "foster", "synergy", "spearheaded",
+    "seamless", "pivotal", "testament to", "in today's fast-paced landscape",
+    "thrilled to apply", "dynamic ecosystem", "cognitive friction", "pedagogical flow",
+    "non-negotiable", "passionate about", "moreover", "furthermore", "in addition",
+    "allow me to introduce", "pleased to submit", "fervent", "ardent", "harnessing the power"
+]
 
 class GroqService:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
 
     def _format_research_brief(self, brief: Optional[ResearchBrief]) -> str:
-        if not brief or brief.status != "FOUND" or not brief.signals:
-            return "NO_SIGNALS_FOUND"
-        lines = []
-        for s in brief.signals:
-            lines.append(f"- {s.headline} (Source: {s.source_url})")
+        if not brief:
+            return (
+                "Company Mission: Engineering scalable software products.\n"
+                "Industry Domain: Enterprise Software & Cloud Platforms\n"
+                "Core Technical Priorities: Scalable Full-Stack Architecture, High-Throughput Performance"
+            )
+
+        lines = [
+            f"Company Mission & Product: {brief.company_summary or 'Developing scalable software solutions.'}",
+            f"Industry Domain: {brief.industry_domain}",
+            f"Core Technical Priorities: {', '.join(brief.technical_priorities) if brief.technical_priorities else 'Full-Stack Architecture, High-Throughput Performance'}"
+        ]
+        if brief.signals:
+            lines.append("Verified Recent Milestones:")
+            for s in brief.signals[:2]:
+                lines.append(f"- {s.headline} ({s.source_url})")
         return "\n".join(lines)
+
+    def _format_candidate_projects(self, projects: List[Dict[str, Any]]) -> str:
+        if not projects:
+            return "No specific projects provided."
+        
+        project_blocks = []
+        for p in projects[:3]:
+            name = p.get("name") or p.get("title") or "Engineering Project"
+            stack = p.get("tech_stack") or ", ".join(p.get("tags", [])) or "Full Stack"
+            gh_url = p.get("github_url") or p.get("repo_url") or ""
+            demo_url = p.get("live_demo_url") or ""
+            
+            bullets = p.get("bullets", [])
+            bullet_text = " ".join(bullets[:2]) if bullets else "Engineered core modules with robust concurrency and state management."
+
+            block = (
+                f"- Project: {name} ({stack})\n"
+                f"  GitHub: {gh_url or 'N/A'}\n"
+                f"  Live Demo: {demo_url or 'N/A'}\n"
+                f"  Engineering Focus: {bullet_text}"
+            )
+            project_blocks.append(block)
+
+        return "\n".join(project_blocks)
 
     async def _execute_groq_completion(self, user_content: str, max_tokens: int = 1024) -> str:
         key = self.api_key or os.environ.get("GROQ_API_KEY", "")
@@ -54,10 +96,10 @@ class GroqService:
                 payload = {
                     "model": model_name,
                     "messages": [
-                        {"role": "system", "content": SYSTEM_GROUNDING_PROMPT},
+                        {"role": "system", "content": SYSTEM_HUMAN_ENGINEER_PROMPT},
                         {"role": "user", "content": user_content}
                     ],
-                    "temperature": 0.7,
+                    "temperature": 0.4,
                     "max_tokens": max_tokens,
                     "stream": False
                 }
@@ -84,71 +126,135 @@ class GroqService:
 
         return await scheduler.execute_task("groq", _call_groq)
 
-    def _format_research_brief(self, brief: Optional[ResearchBrief]) -> str:
-        if not brief:
-            return (
-                "Company Mission: Engineering scalable software products.\n"
-                "Industry Domain: Enterprise Software & Cloud Platforms\n"
-                "Core Technical Priorities: Scalable Full-Stack Architecture, High-Throughput Performance"
-            )
-
-        lines = [
-            f"Company Mission & Product: {brief.company_summary or 'Developing scalable software solutions.'}",
-            f"Industry Domain: {brief.industry_domain}",
-            f"Core Technical Priorities: {', '.join(brief.technical_priorities) if brief.technical_priorities else 'Full-Stack Architecture, High-Throughput Performance'}"
-        ]
-        if brief.signals:
-            lines.append("Verified Recent Milestones:")
-            for s in brief.signals[:2]:
-                lines.append(f"- {s.headline} ({s.source_url})")
-        return "\n".join(lines)
-
     async def generate_cover_letter(
         self,
         company_name: str,
         role_title: str,
-        resume_bullets: List[str],
+        resume_bullets: List[str] = [],
+        projects: Optional[List[Dict[str, Any]]] = None,
         research_brief: Optional[ResearchBrief] = None,
+        pitch_style: str = "deep_dive",
         mock_response: Optional[str] = None
     ) -> str:
         """
-        Generates grounded 280-word cover letter using the Architectural Bridge Framework.
-        Directly connects candidate's verified codebase projects to company challenges.
+        Generates humanized Cover Letter with exact engineering mechanics and live links.
+        Supports 3 pitch styles: 'deep_dive', 'scannable', 'executive'.
         """
         if mock_response is not None:
             return mock_response
 
         brief_str = self._format_research_brief(research_brief)
-        bullets_str = "\n".join(f"• {b}" for b in resume_bullets)
+        project_context = self._format_candidate_projects(projects or [])
+        if not projects and resume_bullets:
+            project_context = "\n".join(f"• {b}" for b in resume_bullets)
 
         domain_str = research_brief.industry_domain if research_brief else "Technology"
-        priority_str = research_brief.technical_priorities[0] if research_brief and research_brief.technical_priorities else "scalable architecture"
+        priority_str = research_brief.technical_priorities[0] if research_brief and research_brief.technical_priorities else "scalable full-stack architecture"
+
+        style_instruction = ""
+        if pitch_style == "scannable":
+            style_instruction = (
+                "FORMAT: 3-Part Structured Matrix for Fast Technical Scanning:\n"
+                "1. Platform Alignment (2 sentences on why candidate maps to company's stack/goals)\n"
+                "2. Verified Proofs of Work (Bold project names with direct GitHub/Live URLs and 2 technical bullet points each detailing what was built and how concurrency/state was handled)\n"
+                "3. Immediate Day 1 Contribution (2 sentences on exact problems candidate can solve on day one)."
+            )
+        elif pitch_style == "executive":
+            style_instruction = (
+                "FORMAT: 4-Sentence Ultra-Dense Executive Pitch for Founders & VPs:\n"
+                "- Sentence 1: Direct technical match for role & company challenge.\n"
+                "- Sentence 2: Core proof of work with concrete mechanics from Project 1 + active live demo/GitHub link.\n"
+                "- Sentence 3: Second architecture proof of work (IPC, DB transactions, or concurrency).\n"
+                "- Sentence 4: Low-friction 10-minute sync invite."
+            )
+        else: # deep_dive
+            style_instruction = (
+                "FORMAT: 3-Paragraph Conversational Engineering Deep-Dive for Tech Leads & Engineering Managers:\n"
+                "- Paragraph 1: Humanized opening on company's product in {domain_str} and why their engineering challenges (e.g. {priority_str}) are interesting.\n"
+                "- Paragraph 2: Story of building Project 1 — what broke, why concurrency/state sync was hard, how you solved it, and naturally embed the GitHub or live demo URL.\n"
+                "- Paragraph 3: Second project architecture (sidecar IPC, atomic DB transactions, or optimistic UI), followed by a 1-sentence engineering proposal for {company_name}'s platform and a direct, confident close."
+            )
+
+        forbidden_str = ", ".join(ANTI_AI_FORBIDDEN_BUZZWORDS)
 
         user_content = (
-            f"You are an elite career strategist and software engineering director. "
-            f"Write a prestigious, 280-word technical Cover Letter applying for {role_title} at {company_name}.\n\n"
-            f"COMPANY INTELLIGENCE & ARCHITECTURAL CONTEXT:\n{brief_str}\n\n"
-            f"CANDIDATE CODEBASE PROOFS OF WORK (VERIFIED PROJECTS):\n{bullets_str}\n\n"
-            f"CRITICAL ARCHITECTURAL BRIDGE INSTRUCTIONS:\n"
-            f"1. DO NOT use generic filler phrases like 'I am writing with great enthusiasm' or 'Please accept my application'.\n"
-            f"2. Paragraph 1 (The Hook): Empathize with {company_name}'s specific product mission in {domain_str} and their need for robust engineering around {priority_str}.\n"
-            f"3. Paragraph 2 & 3 (The Architectural Parallel): Draw direct 1-to-1 parallels between the candidate's verified projects (e.g. Maxume, Metro-Connect, EzNotes) and {company_name}'s technical bottlenecks. Explain HOW the candidate handled concurrency, decoupled client-sidecar IPC, or atomic state synchronization.\n"
-            f"4. Paragraph 4 (The Day 1 Close): High-confidence statement on how the candidate will help ship reliable features from Day 1.\n"
-            f"5. NO fake percentage metrics. Focus strictly on system design, data integrity, and engineering mechanics.\n"
-            f"6. Do not include thinking tags. Output the final letter immediately."
+            f"Write an authentic, humanized Cover Letter applying for {role_title} at {company_name}.\n\n"
+            f"COMPANY INTELLIGENCE:\n{brief_str}\n\n"
+            f"CANDIDATE PROJECTS (WITH EXACT MECHANICS & VERIFIED LINKS):\n{project_context}\n\n"
+            f"{style_instruction}\n\n"
+            f"CRITICAL HUMANIZATION & ANTI-AI CONSTRAINTS:\n"
+            f"1. STRICTLY FORBIDDEN WORDS: Never use any of these buzzwords: {forbidden_str}.\n"
+            f"2. SPEAK LIKE A REAL ENGINEER: Talk naturally about practical software trade-offs, race conditions, atomic mutations, and system boundaries.\n"
+            f"3. EMBED REAL LINKS: Mention candidate's GitHub or live demo URLs naturally in the text.\n"
+            f"4. NO fake percentage metrics. Focus entirely on authentic architecture and code mechanics.\n"
+            f"5. Output the final letter immediately without thinking tags or meta-explanations."
         )
 
         async def call_groq():
             try:
-                return await self._execute_groq_completion(user_content, max_tokens=1200)
+                return await self._execute_groq_completion(user_content, max_tokens=1000)
             except Exception:
                 return (
-                    f"Dear Hiring Team at {company_name},\n\n"
-                    f"As {company_name} continues scaling its product architecture in {domain_str}, delivering robust, low-latency software becomes essential to maintaining user velocity.\n\n"
-                    f"My engineering background directly aligns with your core technical priorities. When developing full-stack architectures, I focus heavily on concurrency safety, atomic state updates, and decoupled system design:\n\n"
-                    f"{bullets_str}\n\n"
-                    f"I am eager to bring this exact focus on concurrency, robust system architecture, and clean full-stack design to {company_name}'s engineering organization.\n\n"
-                    f"Sincerely,\nCandidate"
+                    f"Hi team at {company_name},\n\n"
+                    f"I saw the {role_title} opening and wanted to reach out. As {company_name} scales its platform in {domain_str}, "
+                    f"handling concurrent users while maintaining low-latency state updates is usually where the biggest bottlenecks occur.\n\n"
+                    f"I've spent a lot of time working through these exact problems in my own projects. When building full-stack architectures, "
+                    f"I focus heavily on atomic database integrity, WebSocket event isolation, and decoupled sidecar IPC to eliminate race conditions.\n\n"
+                    f"I’d love to bring this practical engineering approach to {company_name}. I have attached my resume and look forward to connecting.\n\n"
+                    f"Best,\nCandidate"
+                )
+
+        return await scheduler.execute_task("groq", call_groq)
+
+    async def generate_application_email(
+        self,
+        company_name: str,
+        role_title: str,
+        resume_bullets: List[str] = [],
+        projects: Optional[List[Dict[str, Any]]] = None,
+        research_brief: Optional[ResearchBrief] = None,
+        pitch_style: str = "deep_dive",
+        mock_response: Optional[str] = None
+    ) -> str:
+        """
+        Generates humanized direct application email (Subject + Body) with live links.
+        """
+        if mock_response is not None:
+            return mock_response
+
+        brief_str = self._format_research_brief(research_brief)
+        project_context = self._format_candidate_projects(projects or [])
+        if not projects and resume_bullets:
+            project_context = "\n".join(f"• {b}" for b in resume_bullets[:2])
+
+        domain_str = research_brief.industry_domain if research_brief else "Technology"
+        forbidden_str = ", ".join(ANTI_AI_FORBIDDEN_BUZZWORDS)
+
+        user_content = (
+            f"Draft a humanized, direct application email (Subject Line + Body) applying for {role_title} at {company_name}.\n\n"
+            f"COMPANY CONTEXT:\n{brief_str}\n\n"
+            f"CANDIDATE PROJECTS:\n{project_context}\n\n"
+            f"INSTRUCTIONS:\n"
+            f"1. Subject line should be natural and specific (e.g. 'Full-stack engineer / Project Name -> {company_name}').\n"
+            f"2. Body should be 4-6 natural sentences. Sound like an engineer emailing another engineer.\n"
+            f"3. Reference a concrete engineering challenge in {domain_str} and explain how candidate solved it.\n"
+            f"4. Naturally embed 1 GitHub or live demo link.\n"
+            f"5. NO robotic buzzwords ({forbidden_str}).\n"
+            f"6. End with a clean 10-15 minute chat invite. Do not include thinking tags."
+        )
+
+        async def call_groq():
+            try:
+                return await self._execute_groq_completion(user_content, max_tokens=500)
+            except Exception:
+                return (
+                    f"Subject: Full-Stack Engineer / {role_title} opening -> {company_name}\n\n"
+                    f"Hi Team,\n\n"
+                    f"I saw the {role_title} role at {company_name} and wanted to share my background directly. "
+                    f"As your team expands its platform in {domain_str}, I bring hands-on experience building decoupled backend architectures and real-time state synchronization.\n\n"
+                    f"In my recent projects, I focused heavily on isolating concurrent WebSocket channels and enforcing atomic transaction integrity to eliminate race conditions under load.\n\n"
+                    f"I’d love to connect for 10-15 minutes if you're open to exploring a fit. My resume is attached.\n\n"
+                    f"Best regards,\nCandidate"
                 )
 
         return await scheduler.execute_task("groq", call_groq)
@@ -187,52 +293,6 @@ class GroqService:
                     f"Hi {employee_name}, I came across your work as {employee_tagline} at {company_name} and was really impressed. "
                     f"I am applying for the {role_title} opening. With hands-on experience in high-scale systems, "
                     f"I'd love to connect briefly or ask for your referral if you're open to it. Thank you for your time!"
-                )
-
-        return await scheduler.execute_task("groq", call_groq)
-
-    async def generate_application_email(
-        self,
-        company_name: str,
-        role_title: str,
-        resume_bullets: List[str],
-        research_brief: Optional[ResearchBrief] = None,
-        mock_response: Optional[str] = None
-    ) -> str:
-        """
-        Generates a 120-word high-impact direct application email using the Day 1 Value Pitch framework.
-        """
-        if mock_response is not None:
-            return mock_response
-
-        brief_str = self._format_research_brief(research_brief)
-        bullets_str = "\n".join(f"• {b}" for b in resume_bullets[:2])
-        domain_str = research_brief.industry_domain if research_brief else "Technology"
-
-        user_content = (
-            f"Draft a high-impact, 120-word direct outbound application email (Subject Line + Body) applying for {role_title} at {company_name}.\n"
-            f"COMPANY CONTEXT:\n{brief_str}\n\n"
-            f"CANDIDATE HIGHLIGHTS:\n{bullets_str}\n\n"
-            f"INSTRUCTIONS:\n"
-            f"1. Subject line should be punchy and technical (e.g. 'Application: {role_title} - Full-Stack & Concurrency Architecture').\n"
-            f"2. Hook: Acknowledge {company_name}'s mission in {domain_str}.\n"
-            f"3. Value Add: Reference candidate's verified projects.\n"
-            f"4. Call to Action: Clean 15-minute conversation request.\n"
-            f"5. Do not include thinking tags. Output final email immediately."
-        )
-
-        async def call_groq():
-            try:
-                return await self._execute_groq_completion(user_content, max_tokens=600)
-            except Exception:
-                return (
-                    f"Subject: Application: {role_title} - Engineering Candidate\n\n"
-                    f"Hi Team,\n\n"
-                    f"I am reaching out regarding the {role_title} opening at {company_name}. "
-                    f"As your team expands its platform in {domain_str}, I bring hands-on experience architecting resilient, low-latency systems:\n\n"
-                    f"{bullets_str}\n\n"
-                    f"I have attached my resume and would welcome a brief conversation to explore how I can contribute to your engineering goals.\n\n"
-                    f"Best regards,\nCandidate"
                 )
 
         return await scheduler.execute_task("groq", call_groq)

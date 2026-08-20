@@ -4,6 +4,21 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.8.0] - 2026-08-21 (Humanized Engineering Voice, 3 Pitch Styles & Live Link Embeddings)
+
+### Added & Enhanced
+- **Humanized Engineering Voice & Anti-AI Blacklist** (`groq_service.py`):
+  - Strictly bans corporate robotic filler words (*"delve", "testament", "tapestry", "foster", "synergy", "spearheaded", "seamless", "pivotal", "cognitive friction", "pedagogical flow"*).
+  - Enforces authentic *problem $\rightarrow$ friction $\rightarrow$ fix* developer storytelling explaining concrete trade-offs, race conditions, atomic mutations, and system design.
+- **3 Toggleable Pitch Styles in UI** (`Optimizer.tsx`):
+  - 🛠️ **Engineering Deep-Dive**: 3-paragraph conversational engineering teardown with concrete mechanics for Tech Leads and Engineering Managers.
+  - ⚡ **3-Part Scannable Matrix**: Clean structured value breakdown with bold project headers and technical bullet points for fast Recruiter scanning.
+  - 🎯 **Executive Cold Pitch**: Ultra-dense 4-sentence high-signal pitch for Founders and VPs.
+- **Active Live Demo & GitHub Link Embeddings**: Naturally embeds candidate project repository links and live deployment URLs directly into generated cover letters and outreach emails.
+- **Instant In-App Pitch Style Switcher**: Added `POST /api/regenerate-copy` endpoint allowing instantaneous (<1.5s) re-synthesis when switching styles in the UI without rebuilding DOCX or re-running OCR.
+
+---
+
 ## [v1.7.0] - 2026-08-20 (Company Technical Dossier & Architectural Bridge Personalization)
 
 ### Added & Enhanced
