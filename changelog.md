@@ -4,6 +4,18 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.8.1] - 2026-08-21 (Reasoning Leak Elimination & Guaranteed Copy-Pastable Output)
+
+### Fixed & Enhanced
+- **Direct Instruction Model Prioritization** (`groq_service.py`):
+  - Prioritized `openai/gpt-oss-120b`, `openai/gpt-oss-20b`, and `groq/compound` as primary candidate models, ensuring instant, un-bloated copy generation without long reasoning delays.
+- **Multi-Stage Thinking & Preamble Cleaner (`clean_thinking_and_preamble`)**:
+  - Engineered bulletproof regex and structural extractors to strip `<think>` tags (including unclosed tokens on truncation), thought headers (`### Thinking Process:`, `Here's a breakdown:`), and auto-slice to the real letter start (`Hi team at...`, `Dear...`, `Subject:`).
+- **Generation Headroom & Strict Constraints**:
+  - Expanded max generation tokens (`1800` for cover letters, `1000` for emails) and injected `DIRECT OUTPUT ONLY` prompt directives, ensuring 100% copy-pastable outputs across all 3 pitch styles.
+
+---
+
 ## [v1.8.0] - 2026-08-21 (Humanized Engineering Voice, 3 Pitch Styles & Live Link Embeddings)
 
 ### Added & Enhanced

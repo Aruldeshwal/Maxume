@@ -50,6 +50,7 @@ Maxume is a tactical desktop and web application that automates technical resume
   - 🎯 **Executive Cold Pitch** *(For Founders & VPs)*: 4-sentence ultra-dense high-signal outreach with 1 live link and a frictionless 10-minute sync invite.
 * **Active Live Demo & GitHub Link Embeddings**: Naturally embeds candidate project repository URLs and live deployment links (`https://github.com/Aruldeshwal/Maxume`, `https://metro-connect.vercel.app`) in both cover letters and emails.
 * **Anti-AI Buzzword Blacklist & Humanized Tone**: Strictly bans robotic filler (*"delve", "testament", "tapestry", "foster", "synergy", "spearheaded", "seamless", "pivotal", "cognitive friction", "pedagogical flow"*) in favor of authentic developer storytelling.
+* **Zero-Leak Copy Guarantee (`clean_thinking_and_preamble`)**: Multi-stage sanitizer deterministically strips reasoning tags (`<think>`), unclosed thought fragments, and preamble drafts, guaranteeing 100% clean copy-pastable output.
 * **Instant In-App Pitch Regeneration**: Switch between pitch styles in real time with the sub-1.5s `POST /api/regenerate-copy` endpoint.
 
 ### 7. Verified Real Employee Networking & Strategic Outreach Engine

@@ -105,4 +105,9 @@
 * **Context**: Overly compressed word counts and generic AI prompts produced unpolished, fuzzy copy saturated with robotic buzzwords (*"cognitive friction", "fostering synergies"*), and users had no easy way to target different hiring personas.
 * **Decision**: Enforce a strict Anti-AI buzzword blacklist, adopt natural *problem $\rightarrow$ friction $\rightarrow$ fix* engineering storytelling, embed active GitHub/live demo links directly into copy, and provide 3 switchable UI pitch styles (**Engineering Deep-Dive**, **3-Part Scannable Matrix**, **Executive Cold Pitch**) with sub-1.5s live regeneration via `POST /api/regenerate-copy`.
 
+## ADR-022: Reasoning Model Leak Prevention & Direct Model Prioritization
+* **Status**: Accepted
+* **Context**: Reasoning models emitted chain-of-thought blocks (`<think>...`) or preamble outlines that leaked into UI tabs when token limits cut off output before the closing tag.
+* **Decision**: Prioritize direct instruction models (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `groq/compound`), increase generation token headroom to 1800, enforce `DIRECT OUTPUT ONLY` prompt directives, and implement `clean_thinking_and_preamble` to deterministically discard any lingering reasoning headers or unclosed thinking blocks.
+
 

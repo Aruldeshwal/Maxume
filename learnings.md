@@ -48,3 +48,7 @@
 * Forcing strict token or word counts onto LLMs induces "buzzword salad," where sentences become dense, unnatural, and robotic.
 * Structuring generation around natural developer storytelling (*what broke $\rightarrow$ why concurrency/state sync was hard $\rightarrow$ how exact mechanisms solved it*) paired with an Anti-AI buzzword blacklist produces persuasive, authentic text that sounds like an engineer speaking to another engineer over coffee. Embedding active GitHub and live deployment links provides immediate 1-click proof of work.
 
+### 13. Direct Instruction vs. Chain-of-Thought Models in User-Facing Copy Synthesis
+* While chain-of-thought (CoT) reasoning models excel at math and code synthesis, they introduce unpredictable latency and drafting noise in fast UI text generation.
+* For single-click UI outputs (like cover letters, emails, and elevator pitches), direct instruction models (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`) produce cleaner, instantaneous, copy-pastable text. When paired with resilient multi-stage preamble extractors, the pipeline is fully protected against leaking drafting notes or unclosed `<think>` fragments.
+

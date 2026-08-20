@@ -60,3 +60,7 @@
 * **Difficulty**: Aggressive word-count bounds forced the LLM to compress natural explanations into dense robotic jargon (*"fostering synergies", "cognitive friction", "pedagogical flow"*), resulting in fuzzy, unpolished text that failed to feel human.
 * **Resolution**: Replaced word-count limits with structural storytelling rules (*problem $\rightarrow$ friction $\rightarrow$ fix*), implemented an Anti-AI buzzword blacklist in `groq_service.py`, naturally embedded verified GitHub/live demo links, and built a UI Pitch Style Selector (**Engineering Deep-Dive**, **3-Part Scannable Matrix**, **Executive Cold Pitch**) with sub-1.5s live regeneration.
 
+### 16. Chain-of-Thought Reasoning Leaks in Automated Text Pipelines
+* **Difficulty**: Hybrid reasoning models (`qwen3.6-27b`) emit internal thinking tokens (`<think>...`) or reasoning preambles before the actual output. When token generation limits were hit mid-thought, unclosed `<think>` tags bypassed standard regex cleaners, rendering raw drafting thoughts directly into the user interface.
+* **Resolution**: Re-ordered Groq model hierarchy to prioritize direct instruction models (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `groq/compound`), expanded token limits to 1800, and engineered `clean_thinking_and_preamble` to handle unclosed tags, markdown headers, and auto-slice to greeting/subject anchors.
+

@@ -66,3 +66,8 @@
 - [x] 3 Pitch Styles with Real-Time In-App Switcher (`Optimizer.tsx`): 🛠️ **Engineering Deep-Dive**, ⚡ **3-Part Scannable Matrix**, 🎯 **Executive Cold Pitch**.
 - [x] High-Speed Re-Synthesis Endpoint (`POST /api/regenerate-copy`) delivering instant (<1.5s) copy regenerations upon switching pitch styles.
 - [x] Active Live Demo & GitHub Link Embeddings naturally integrating verified project URLs (`https://github.com/Aruldeshwal/Maxume`, `https://metro-connect.vercel.app`) in cover letters and emails.
+
+### Phase 10: Reasoning Leak Prevention & Direct Model Prioritization (Completed)
+- [x] Prioritized direct instruction models (`openai/gpt-oss-120b`, `openai/gpt-oss-20b`, `groq/compound`) over verbose CoT models for fast UI generation.
+- [x] Multi-Stage Thinking & Preamble Cleaner (`clean_thinking_and_preamble`) handling unclosed `<think>` tags, thought headers, and greeting anchors.
+- [x] Token budget expansion (1800 for cover letters, 1000 for emails) and `DIRECT OUTPUT ONLY` prompt constraints to ensure 100% copy-pastable outputs.
