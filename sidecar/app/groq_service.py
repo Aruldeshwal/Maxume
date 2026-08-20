@@ -11,16 +11,19 @@ from app.company_research import ResearchBrief
 load_dotenv()
 
 CANDIDATE_GROQ_MODELS = [
-    os.environ.get("GROQ_MODEL", "qwen/qwen3.6-27b"),
-    "openai/gpt-oss-120b",
+    os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
     "openai/gpt-oss-20b",
-    "groq/compound"
+    "groq/compound",
+    "qwen/qwen3.6-27b"
 ]
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 SYSTEM_HUMAN_ENGINEER_PROMPT = (
     "You are an articulate, pragmatic software engineer writing directly to another engineer or hiring manager. "
+    "CRITICAL DIRECTIVE: You must output ONLY the final copy-pastable text. "
+    "NEVER output your internal thinking, reasoning process, chain of thought, outline, draft notes, or meta-commentary. "
+    "Start immediately with the greeting (e.g. 'Hi team at...') or subject line. "
     "You communicate casually yet technically, with zero corporate jargon, zero marketing fluff, and zero robotic filler. "
     "You speak openly about real engineering friction, race conditions, architecture decisions, and concrete solutions. "
     "You never invent fake metrics or hallucinate technologies."
@@ -33,6 +36,56 @@ ANTI_AI_FORBIDDEN_BUZZWORDS = [
     "non-negotiable", "passionate about", "moreover", "furthermore", "in addition",
     "allow me to introduce", "pleased to submit", "fervent", "ardent", "harnessing the power"
 ]
+
+def clean_thinking_and_preamble(raw_text: str) -> str:
+    """Bulletproof extractor that eliminates any reasoning/thinking tokens or preamble."""
+    text = raw_text.strip()
+    
+    # 1. Strip standard <think>...</think> tags
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+    
+    # 2. If <think> was unclosed (token truncation), remove everything from <think>
+    if "<think>" in text:
+        text = re.sub(r'<think>.*', '', text, flags=re.DOTALL).strip()
+
+    # 3. Strip markdown thought headers
+    thought_patterns = [
+        r"(?i)^(?:Here(?:'s| is) (?:a )?(?:thinking process|plan|breakdown|draft):.*?\n\n)",
+        r"(?i)^(?:Thinking Process:.*?\n\n)",
+        r"(?i)^(?:###\s*(?:Thinking|Analysis|Plan|Breakdown|Notes).*?\n\n)",
+        r"(?i)^(?:1\.\s*Analyze User Input.*?\n\n)"
+    ]
+    for pat in thought_patterns:
+        text = re.sub(pat, '', text, flags=re.DOTALL).strip()
+
+    # 4. If text contains markers like "Here is the cover letter:", slice to the actual content
+    letter_start_markers = [
+        r"(?i)\n(?:Here is the (?:cover letter|email|pitch|letter):)\s*\n+",
+        r"(?i)\n(?:Cover Letter:)\s*\n+",
+        r"(?i)\n(?:Subject: [^\n]+)\n+",
+        r"(?i)\n(?:Dear [^\n]+,)\n+",
+        r"(?i)\n(?:Hi [^\n]+,)\n+",
+        r"(?i)\n(?:Hello [^\n]+,)\n+"
+    ]
+    for marker in letter_start_markers:
+        match = re.search(marker, text)
+        if match and match.start() > 0:
+            prefix = text[:match.start()]
+            if any(k in prefix.lower() for k in ["think", "analyze", "deconstruct", "draft", "step 1", "constraints"]):
+                text = text[match.start():].strip()
+                text = re.sub(r'(?i)^(?:Here is the (?:cover letter|email|pitch|letter):)\s*', '', text).strip()
+                text = re.sub(r'(?i)^(?:Cover Letter:)\s*', '', text).strip()
+                break
+
+    # 5. If it starts with common greeting or Subject, ensure no lingering preamble
+    if not (text.startswith("Hi ") or text.startswith("Dear ") or text.startswith("Subject: ") or text.startswith("Hello ")):
+        greeting_match = re.search(r'(?m)^(Hi |Dear |Subject: |Hello |To )', text)
+        if greeting_match and greeting_match.start() > 0:
+            candidate_clean = text[greeting_match.start():].strip()
+            if len(candidate_clean) > 80:
+                text = candidate_clean
+
+    return text
 
 class GroqService:
     def __init__(self, api_key: Optional[str] = None):
@@ -81,7 +134,7 @@ class GroqService:
 
         return "\n".join(project_blocks)
 
-    async def _execute_groq_completion(self, user_content: str, max_tokens: int = 1024) -> str:
+    async def _execute_groq_completion(self, user_content: str, max_tokens: int = 1500) -> str:
         key = self.api_key or os.environ.get("GROQ_API_KEY", "")
         if not key:
             raise RuntimeError("GROQ_API_KEY not configured")
@@ -99,17 +152,18 @@ class GroqService:
                         {"role": "system", "content": SYSTEM_HUMAN_ENGINEER_PROMPT},
                         {"role": "user", "content": user_content}
                     ],
-                    "temperature": 0.4,
+                    "temperature": 0.3,
                     "max_tokens": max_tokens,
                     "stream": False
                 }
                 try:
-                    res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=12.0)
+                    res = requests.post(GROQ_API_URL, headers=headers, json=payload, timeout=14.0)
                     if res.status_code == 200:
                         data = res.json()
                         raw_text = data["choices"][0]["message"]["content"].strip()
-                        cleaned_text = re.sub(r'<think>.*?</think>', '', raw_text, flags=re.DOTALL).strip()
-                        return cleaned_text
+                        cleaned_text = clean_thinking_and_preamble(raw_text)
+                        if cleaned_text:
+                            return cleaned_text
                     elif res.status_code == 429:
                         raise RuntimeError(f"Groq 429: {res.text}")
                     elif res.status_code in [400, 404] and ("decommissioned" in res.text or "invalid_request_error" in res.text or "not_found" in res.text):
@@ -187,12 +241,13 @@ class GroqService:
             f"2. SPEAK LIKE A REAL ENGINEER: Talk naturally about practical software trade-offs, race conditions, atomic mutations, and system boundaries.\n"
             f"3. EMBED REAL LINKS: Mention candidate's GitHub or live demo URLs naturally in the text.\n"
             f"4. NO fake percentage metrics. Focus entirely on authentic architecture and code mechanics.\n"
-            f"5. Output the final letter immediately without thinking tags or meta-explanations."
+            f"5. DIRECT OUTPUT ONLY: Start immediately with the greeting (e.g. 'Hi team at {company_name},') and end with the candidate sign-off. Absolutely NO thinking process, reasoning steps, outline, notes, or analysis tags.\n"
+            f"6. Output the final copy-pastable letter immediately."
         )
 
         async def call_groq():
             try:
-                return await self._execute_groq_completion(user_content, max_tokens=1000)
+                return await self._execute_groq_completion(user_content, max_tokens=1800)
             except Exception:
                 return (
                     f"Hi team at {company_name},\n\n"
@@ -240,12 +295,13 @@ class GroqService:
             f"3. Reference a concrete engineering challenge in {domain_str} and explain how candidate solved it.\n"
             f"4. Naturally embed 1 GitHub or live demo link.\n"
             f"5. NO robotic buzzwords ({forbidden_str}).\n"
-            f"6. End with a clean 10-15 minute chat invite. Do not include thinking tags."
+            f"6. DIRECT OUTPUT ONLY: Start immediately with the Subject line and end with sign-off. Absolutely NO thinking process, reasoning steps, outline, notes, or analysis tags.\n"
+            f"7. End with a clean 10-15 minute chat invite."
         )
 
         async def call_groq():
             try:
-                return await self._execute_groq_completion(user_content, max_tokens=500)
+                return await self._execute_groq_completion(user_content, max_tokens=1000)
             except Exception:
                 return (
                     f"Subject: Full-Stack Engineer / {role_title} opening -> {company_name}\n\n"
