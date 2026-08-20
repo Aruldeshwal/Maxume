@@ -46,9 +46,11 @@ graph TD
 - **Metadata Cleansing**: Automatically filters out markdown syntax, bold labels, and repository URLs from resume bullet text.
 - **File-Lock Safe Writer**: Catches Windows Word file-lock exceptions and saves to safe fallback paths without failing the run.
 
-### Pillar 4: Real-Time Quota Tracking & Networking Outreach Hub
+### Pillar 4: Real-Time Quota Tracking, Company Dossier & Outreach Hub
 - **Real-Time Daily API Quota Tracker**: Persists daily request counts in SQLite (`api_quotas` table) and exposes `GET /api/quotas`, updating the UI dashboard rings live as runs execute.
-- **Real-Time News Wire**: Aggregates real-time news, launches, and funding rounds from Google News RSS and direct company announcements.
+- **Company Technical Dossier**: Scrapes landing page metadata and hero value propositions ($0 cost) to extract exact product missions and industry categories (*EdTech, DevTools, AI/ML, FinTech*).
+- **JD Architectural Challenge Deconstructor**: Analyzes Job Description text to identify core engineering priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput API Performance*).
+- **The Architectural Bridge Framework**: Synthesizes 280-word executive cover letters and 120-word application emails drawing 1-to-1 parallels between candidate projects (`Maxume`, `Metro-Connect`, `EzNotes`) and company challenges.
 - **3-Stage Hallucination Containment**: Deterministic verification (`passes_containment_check`) rejects ungrounded claims.
 - **4-Stage Employment Authenticity Verifier**: Eliminates EdTech course participants, bootcamp students, and corrupt dates (1800s/1900s), discovering genuine internal corporate employees.
 - **3-Archetype Strategic Classifier**: Segregates contacts into `👑 Decision Maker`, `🎯 Talent Gateway`, and `🌐 Network Bridge`.

@@ -139,6 +139,14 @@ Processes job description text and/or screenshots, reranks top candidate project
   "personalization_status": "Personalized",
   "research_brief": {
     "status": "FOUND",
+    "company_name": "Meritshot",
+    "company_summary": "AI-driven professional coaching, executive upskilling, and tech career placement ecosystem.",
+    "industry_domain": "EdTech & Career Intelligence",
+    "technical_priorities": [
+      "Real-Time Concurrency & WebSocket State Synchronization",
+      "Atomic Database Integrity & Distributed Transactions",
+      "Responsive Client-Side UI & Complex State Management"
+    ],
     "signals": [
       {
         "signal_type": "product_launch",

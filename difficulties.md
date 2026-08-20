@@ -52,3 +52,7 @@
 * **Difficulty**: Searching for employees at EdTech providers (e.g. Meritshot) returned course participants (*"Student at Meritshot"*) or troll profiles with corrupt 1900s dates rather than genuine internal hiring staff. Additionally, generated outreach pitches exceeded LinkedIn's 200-character free-tier connection invite limit.
 * **Resolution**: Engineered a 4-Stage Verification Filter in `networking_engine.py` (student/customer blacklist, 1800s/1900s timeline filter, corporate preposition matching), classified contacts into 3 Strategic Archetypes (`👑 Decision Maker`, `🎯 Talent Gateway`, `🌐 Network Bridge`), and enforced deterministic $\le 200$-character note length bounds in a single batched Groq request.
 
+### 14. Shallow News Matching and Superficial Personalization Glue
+* **Difficulty**: Relying solely on RSS article titles caused keyword collisions (e.g. unrelated news mentioning the company name) and generated generic cover letters with superficial hooks that failed to convey deep technical value.
+* **Resolution**: Replaced shallow news scraping with a multi-layered Company Technical Dossier (`company_research.py`) that extracts landing page OpenGraph metadata ($0 cost), deconstructs JD technical bottlenecks (*concurrency, atomic transactions, state management*), and generates executive cover letters using the Architectural Bridge Framework to directly map verified candidate projects to company priorities.
+

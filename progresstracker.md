@@ -54,3 +54,9 @@
 - [x] Strict $\le 200$-Character LinkedIn Connection Note Guard with deterministic safety truncator and UI character counters (`📝 142/200 chars`).
 - [x] Single Batched Groq Request generating personalized notes for all contacts in 1 call ($0 search cost, 66% LLM quota savings).
 - [x] Live DNS MX Deliverability Verification (*Zoho Mail*, *Google Workspace*, *Microsoft 365*) with deliverability confidence ratings.
+
+### Phase 8: Company Technical Dossier & Architectural Bridge Personalization (Completed)
+- [x] Company Technical Dossier Engine (`company_research.py`) with zero-cost metadata scraping, OpenGraph mission extraction, and industry classification.
+- [x] JD Architectural Challenge Deconstructor extracting core technical priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs*).
+- [x] The Architectural Bridge Framework (`groq_service.py`) generating 280-word executive cover letters and 120-word application emails directly connecting candidate projects (`Maxume`, `Metro-Connect`, `EzNotes`) to company challenges.
+- [x] Company Intelligence UI Dossier Card (`SignalCard.tsx`) displaying product mission banners, domain badges, and priority tags.

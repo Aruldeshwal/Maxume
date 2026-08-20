@@ -95,4 +95,9 @@
 * **Context**: Raw public search streams often return customers, course participants (e.g. *"Student at {Company}"* for EdTech providers), or bogus profiles with corrupt 1900s dates, and generic outreach notes exceeded LinkedIn's 200-character free connection invite limit.
 * **Decision**: Implement a 4-Stage Verification Filter in `networking_engine.py` to discard non-employee noise, classify verified employees into 3 Strategic Archetypes (`👑 Decision Maker`, `🎯 Talent Gateway`, `🌐 Network Bridge`), and synthesize tailored notes strictly under 180 characters with deterministic length guards in a single batched Groq request.
 
+## ADR-020: Company Technical Dossier & Architectural Bridge Personalization
+* **Status**: Accepted
+* **Context**: RSS-based news searches frequently returned unrelated articles or nothing for mid-tier companies, and cover letters sounded generic rather than deeply technically tailored.
+* **Decision**: Ingest company landing page metadata and OpenGraph descriptions ($0 cost) to extract product missions and industry categories, deconstruct JD text into core engineering priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs*), and structure cover letters and emails around the Architectural Bridge Framework to directly map verified candidate projects to company challenges.
+
 

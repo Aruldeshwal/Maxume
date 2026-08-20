@@ -58,9 +58,9 @@ To minimize cloud API usage, preserve privacy, and maintain a **$0/month permane
    * *Engine*: Google Gemini 3 Flash (`gemini-3-flash-preview`).
    * *Execution*: Compresses screenshots via Pillow and extracts full job descriptions, followed by semantic reranking of candidate projects.
 
-4. **Real-Time Signal Research & 3-Stage Containment Guard**
-   * *Engine*: Google News RSS Wire + Groq / Gemini Flash.
-   * *Execution*: Aggregates dated press signals and funding announcements. A deterministic post-hoc containment check (`passes_containment_check`) rejects ungrounded claims.
+4. **Company Technical Dossier & Architectural Bridge Personalization**
+   * *Engine*: `company_research.py` + `groq_service.py`.
+   * *Execution*: Ingests landing page metadata and OpenGraph descriptions ($0 cost) to extract company missions and industry domains (*EdTech, DevTools, AI/ML, FinTech*). Deconstructs JD text into core architectural priorities (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs*). Generates 280-word executive cover letters and 120-word application emails drawing 1-to-1 parallels between candidate projects and company bottlenecks without generic filler. Cross-references verified press signals with deterministic containment verification (`passes_containment_check`).
 
 5. **Verified Real Employee Networking & Strategic Outreach Engine**
    * *Engine*: `networking_engine.py` (Multi-Stream Decoders + Google DNS-over-HTTPS + Batched Groq).

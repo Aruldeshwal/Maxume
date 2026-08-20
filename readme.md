@@ -41,9 +41,11 @@ Maxume is a tactical desktop and web application that automates technical resume
 * **ATS-Optimized Categories**: Groups skills into *Programming Languages*, *Frameworks & Web*, *Databases & Cloud/DevOps*, and *Core Competencies & AI*.
 * **JD Relevance Ranking**: Prioritizes candidate skills requested by the target Job Description at the front of each category without hallucinating unrepresented tech (e.g. Go, Rust).
 
-### 6. Real-Time Company News Wire & 3-Stage Hallucination Guard
-* **Real-Time News Wire**: Integrates Google News RSS and live press wires to pull dated news, product launches, and funding rounds from verified Tier 1/Tier 2 publications (*Reuters*, *blog.google*, *TechCrunch*, *CNBC*, etc.).
-* **Deterministic Containment Check**: Post-hoc verification algorithm (`passes_containment_check`) validates that every entity, metric, and claim exists in the source text before entering your cover letter.
+### 6. Company Technical Dossier & Architectural Bridge Personalization
+* **Zero-Cost Company Meta Ingestion**: Automatically scrapes landing page metadata, OpenGraph tags, and hero value propositions ($0 API cost) to extract what the company actually builds and who their customers are.
+* **JD Architectural Challenge Deconstructor**: Dissects Job Description text to identify the company's core engineering bottlenecks (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput API Performance, Client-Side State Synchronization, Local-First System Design*).
+* **The Architectural Bridge Framework (High-Perceived-Value Pitch)**: Generates 280-word executive cover letters and 120-word application emails that draw direct 1-to-1 parallels between the candidate's verified codebase projects (`Maxume`, `Metro-Connect`, `EzNotes`) and the company's real engineering challenges without generic fluff or fake percentage metrics.
+* **Grounded News & Hallucination Guard**: Cross-references verified press milestones and funding rounds from Tier 1/Tier 2 publications (*Reuters*, *TechCrunch*, *Bloomberg*) with deterministic containment verification (`passes_containment_check`).
 
 ### 7. Verified Real Employee Networking & Strategic Outreach Engine
 * **4-Stage Employment Authenticity Verifier**: Eliminates false positives, EdTech course participants (*"Student at {Company}"*), bootcamp customers, and corrupt historical dates (e.g. 1900s), surfacing only **100% genuine internal corporate staff**.

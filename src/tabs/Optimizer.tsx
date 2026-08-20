@@ -633,11 +633,14 @@ export const Optimizer: React.FC = () => {
           </div>
         </div>
 
-        {/* Personalization Signal Card */}
+        {/* Personalization & Intelligence Dossier Card */}
         <SignalCard
           status={activeResult?.research_brief?.status || "Not Attempted"}
           signals={activeResult?.research_brief?.signals || []}
-          companyName={companyName || "Target Company"}
+          companyName={companyName || activeResult?.research_brief?.company_name || "Target Company"}
+          companySummary={activeResult?.research_brief?.company_summary}
+          industryDomain={activeResult?.research_brief?.industry_domain}
+          technicalPriorities={activeResult?.research_brief?.technical_priorities}
         />
 
         {/* Networking Contacts Drawer */}

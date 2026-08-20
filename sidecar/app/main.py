@@ -426,13 +426,15 @@ async def optimize_application(payload: OptimizeApplicationRequest):
     company_clean = company_clean or "Target Company"
     role_clean = role_clean or "Software Engineer"
 
-    # 2. Company Research Signals (Stage 4)
+    # 2. Company Technical Dossier & Grounded Research
     research_brief = None
     personalization_status = "Not Attempted"
     if payload.personalization_enabled:
         research_brief = research_company(
             company_name=company_clean,
             company_url=payload.company_url,
+            company_domain=payload.company_domain,
+            jd_text=jd_text,
             recency_days=90,
             max_signals=5
         )

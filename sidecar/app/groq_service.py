@@ -84,6 +84,25 @@ class GroqService:
 
         return await scheduler.execute_task("groq", _call_groq)
 
+    def _format_research_brief(self, brief: Optional[ResearchBrief]) -> str:
+        if not brief:
+            return (
+                "Company Mission: Engineering scalable software products.\n"
+                "Industry Domain: Enterprise Software & Cloud Platforms\n"
+                "Core Technical Priorities: Scalable Full-Stack Architecture, High-Throughput Performance"
+            )
+
+        lines = [
+            f"Company Mission & Product: {brief.company_summary or 'Developing scalable software solutions.'}",
+            f"Industry Domain: {brief.industry_domain}",
+            f"Core Technical Priorities: {', '.join(brief.technical_priorities) if brief.technical_priorities else 'Full-Stack Architecture, High-Throughput Performance'}"
+        ]
+        if brief.signals:
+            lines.append("Verified Recent Milestones:")
+            for s in brief.signals[:2]:
+                lines.append(f"- {s.headline} ({s.source_url})")
+        return "\n".join(lines)
+
     async def generate_cover_letter(
         self,
         company_name: str,
@@ -93,7 +112,8 @@ class GroqService:
         mock_response: Optional[str] = None
     ) -> str:
         """
-        Generates grounded 300-word cover letter via Groq LPU with grounding constraint.
+        Generates grounded 280-word cover letter using the Architectural Bridge Framework.
+        Directly connects candidate's verified codebase projects to company challenges.
         """
         if mock_response is not None:
             return mock_response
@@ -101,25 +121,33 @@ class GroqService:
         brief_str = self._format_research_brief(research_brief)
         bullets_str = "\n".join(f"• {b}" for b in resume_bullets)
 
+        domain_str = research_brief.industry_domain if research_brief else "Technology"
+        priority_str = research_brief.technical_priorities[0] if research_brief and research_brief.technical_priorities else "scalable architecture"
+
         user_content = (
-            f"Create a 300-word cover letter for a {role_title} role at {company_name}.\n"
-            f"My resume highlights:\n{bullets_str}\n\n"
-            f"RESEARCH_BRIEF:\n{brief_str}"
+            f"You are an elite career strategist and software engineering director. "
+            f"Write a prestigious, 280-word technical Cover Letter applying for {role_title} at {company_name}.\n\n"
+            f"COMPANY INTELLIGENCE & ARCHITECTURAL CONTEXT:\n{brief_str}\n\n"
+            f"CANDIDATE CODEBASE PROOFS OF WORK (VERIFIED PROJECTS):\n{bullets_str}\n\n"
+            f"CRITICAL ARCHITECTURAL BRIDGE INSTRUCTIONS:\n"
+            f"1. DO NOT use generic filler phrases like 'I am writing with great enthusiasm' or 'Please accept my application'.\n"
+            f"2. Paragraph 1 (The Hook): Empathize with {company_name}'s specific product mission in {domain_str} and their need for robust engineering around {priority_str}.\n"
+            f"3. Paragraph 2 & 3 (The Architectural Parallel): Draw direct 1-to-1 parallels between the candidate's verified projects (e.g. Maxume, Metro-Connect, EzNotes) and {company_name}'s technical bottlenecks. Explain HOW the candidate handled concurrency, decoupled client-sidecar IPC, or atomic state synchronization.\n"
+            f"4. Paragraph 4 (The Day 1 Close): High-confidence statement on how the candidate will help ship reliable features from Day 1.\n"
+            f"5. NO fake percentage metrics. Focus strictly on system design, data integrity, and engineering mechanics.\n"
+            f"6. Do not include thinking tags. Output the final letter immediately."
         )
 
         async def call_groq():
             try:
-                return await self._execute_groq_completion(user_content, max_tokens=1024)
+                return await self._execute_groq_completion(user_content, max_tokens=1200)
             except Exception:
-                # Fallback to high-quality template
                 return (
                     f"Dear Hiring Team at {company_name},\n\n"
-                    f"I am writing to express my strong enthusiasm for the {role_title} position. "
-                    f"With a proven track record in engineering scalable architectures and low-latency systems, "
-                    f"I am eager to contribute to your engineering organization.\n\n"
-                    f"Key technical achievements include:\n"
+                    f"As {company_name} continues scaling its product architecture in {domain_str}, delivering robust, low-latency software becomes essential to maintaining user velocity.\n\n"
+                    f"My engineering background directly aligns with your core technical priorities. When developing full-stack architectures, I focus heavily on concurrency safety, atomic state updates, and decoupled system design:\n\n"
                     f"{bullets_str}\n\n"
-                    f"I look forward to discussing how my experience aligns with your team's goals.\n\n"
+                    f"I am eager to bring this exact focus on concurrency, robust system architecture, and clean full-stack design to {company_name}'s engineering organization.\n\n"
                     f"Sincerely,\nCandidate"
                 )
 
@@ -172,31 +200,38 @@ class GroqService:
         mock_response: Optional[str] = None
     ) -> str:
         """
-        Generates an outbound application email with subject line and body.
+        Generates a 120-word high-impact direct application email using the Day 1 Value Pitch framework.
         """
         if mock_response is not None:
             return mock_response
 
         brief_str = self._format_research_brief(research_brief)
-        bullets_str = "\n".join(f"• {b}" for b in resume_bullets)
+        bullets_str = "\n".join(f"• {b}" for b in resume_bullets[:2])
+        domain_str = research_brief.industry_domain if research_brief else "Technology"
 
         user_content = (
-            f"Draft a compelling, direct application email (subject line + body) applying for {role_title} at {company_name}.\n"
-            f"My top achievements:\n{bullets_str}\n\n"
-            f"RESEARCH_BRIEF:\n{brief_str}"
+            f"Draft a high-impact, 120-word direct outbound application email (Subject Line + Body) applying for {role_title} at {company_name}.\n"
+            f"COMPANY CONTEXT:\n{brief_str}\n\n"
+            f"CANDIDATE HIGHLIGHTS:\n{bullets_str}\n\n"
+            f"INSTRUCTIONS:\n"
+            f"1. Subject line should be punchy and technical (e.g. 'Application: {role_title} - Full-Stack & Concurrency Architecture').\n"
+            f"2. Hook: Acknowledge {company_name}'s mission in {domain_str}.\n"
+            f"3. Value Add: Reference candidate's verified projects.\n"
+            f"4. Call to Action: Clean 15-minute conversation request.\n"
+            f"5. Do not include thinking tags. Output final email immediately."
         )
 
         async def call_groq():
             try:
-                return await self._execute_groq_completion(user_content, max_tokens=1024)
+                return await self._execute_groq_completion(user_content, max_tokens=600)
             except Exception:
                 return (
                     f"Subject: Application: {role_title} - Engineering Candidate\n\n"
                     f"Hi Team,\n\n"
-                    f"I am excited to apply for the {role_title} opening at {company_name}. "
-                    f"My background centers on architecting resilient backend systems and deploying production-ready services:\n\n"
+                    f"I am reaching out regarding the {role_title} opening at {company_name}. "
+                    f"As your team expands its platform in {domain_str}, I bring hands-on experience architecting resilient, low-latency systems:\n\n"
                     f"{bullets_str}\n\n"
-                    f"I have attached my resume and would welcome the opportunity to discuss how I can add immediate value to {company_name}.\n\n"
+                    f"I have attached my resume and would welcome a brief conversation to explore how I can contribute to your engineering goals.\n\n"
                     f"Best regards,\nCandidate"
                 )
 

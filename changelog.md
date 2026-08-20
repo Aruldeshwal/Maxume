@@ -4,6 +4,20 @@ All notable changes, architectural pivots, and enhancements are documented here.
 
 ---
 
+## [v1.7.0] - 2026-08-20 (Company Technical Dossier & Architectural Bridge Personalization)
+
+### Added & Enhanced
+- **Company Technical Dossier Engine** (`company_research.py`):
+  - **Zero-Cost Meta & Hero Ingestion**: Scrapes landing page metadata, OpenGraph tags, and hero value propositions ($0 cost) to extract company missions and industry categories (*EdTech, DevTools, AI/ML, FinTech, SaaS*).
+  - **JD Architectural Challenge Deconstructor**: Dissects Job Description text to identify the company's core engineering bottlenecks (*Real-Time Concurrency, Atomic Database Integrity, High-Throughput APIs, Complex State Management*).
+- **The Architectural Bridge Framework** (`groq_service.py`):
+  - Rewrote cover letter and email generation prompts to draw direct 1-to-1 parallels between candidate projects (`Maxume`, `Metro-Connect`, `EzNotes`) and company challenges.
+  - Generates 280-word executive cover letters and 120-word application emails with zero generic filler or fake percentage metrics.
+- **Company Intelligence UI Dossier** (`SignalCard.tsx`):
+  - Displays company mission banner, industry category badge, and visual tags for core technical priorities.
+
+---
+
 ## [v1.6.0] - 2026-08-18 (Employment Authenticity Filtering & <= 200-Character LinkedIn Outreach)
 
 ### Added & Enhanced
